@@ -25,7 +25,9 @@ defmodule Neurow.MixProject do
       {:libcluster, "~> 3.0"},
       {:libcluster_ec2, "~> 0.5"},
       {:prometheus_ex, "~> 3.1"},
-      {:prometheus_plugs, "~> 1.0"}
+      {:prometheus_plugs, "~> 1.0"},
+      {:jose, "~> 1.11"},
+      {:jason, "~> 1.4"}
     ]
   end
 end
