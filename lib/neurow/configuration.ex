@@ -15,16 +15,20 @@ defmodule Neurow.Configuration do
 
   @impl true
   def init(_opts) do
-    {:ok, %{public_issuer_jwks: build_issuer_jwks(:public_issuers), internal_issuer_jwks: build_issuer_jwks(:internal_issuers)}}
+    {:ok,
+     %{
+       public_issuer_jwks: build_issuer_jwks(:public_issuers),
+       internal_issuer_jwks: build_issuer_jwks(:internal_issuers)
+     }}
   end
 
   @impl true
-  def handle_call({:public_issuer_jwks, issuer_name},  _from, state) do
+  def handle_call({:public_issuer_jwks, issuer_name}, _from, state) do
     {:reply, state[:public_issuer_jwks][issuer_name], state}
   end
 
   @impl true
-  def handle_call({:internal_issuer_jwks, issuer_name},  _from, state) do
+  def handle_call({:internal_issuer_jwks, issuer_name}, _from, state) do
     {:reply, state[:internal_issuer_jwks][issuer_name], state}
   end
 

@@ -49,7 +49,6 @@ defmodule Neurow.InternalApi do
   end
 
   post "v1/publish" do
-
     issuer = conn.assigns[:jwt_payload]["iss"]
 
     topic = "#{issuer}-#{conn.body_params["topic"]}"

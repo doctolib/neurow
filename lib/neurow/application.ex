@@ -47,7 +47,8 @@ defmodule Neurow.Application do
       {Phoenix.PubSub,
        name: Neurow.PubSub, options: [adapter: Phoenix.PubSub.PG2, pool_size: 10]},
       {Plug.Cowboy, scheme: :http, plug: Neurow.InternalApi, options: [port: internal_api_port]},
-      {Plug.Cowboy, scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config}
+      {Plug.Cowboy,
+       scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config}
     ]
 
     MetricsPlugExporter.setup()

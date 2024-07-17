@@ -1,5 +1,4 @@
 defmodule Neurow.JwtAuthPlug do
-
   require Logger
 
   import Plug.Conn
@@ -83,25 +82,27 @@ defmodule Neurow.JwtAuthPlug do
   defp check_signature(jwt_token_str, jwk, options) do
     case JOSE.JWT.verify_strict(jwk, [options[:allowed_algorithm]], jwt_token_str) do
       {true, _jwt, _jws} -> {:ok}
-      {false, _jwt, _jws} -> {:error, :signature_error, "Signature error"}
+      {false, _jwt, _jws} -> {:error, :invalid_signature, "Signature error"}
+      _ -> {:error, :invalid_signature, "Signature error"}
     end
   end
 
   defp check_expiration(payload, options) do
     case payload do
-      %JOSE.JWT{fields: %{"exp" => exp, "iat" => iat}} when exp > iat ->
+      %JOSE.JWT{fields: %{"exp" => exp, "iat" => iat}}
+      when is_integer(exp) and is_integer(iat) and exp > iat ->
         if exp - iat > options[:max_lifetime] do
-          {:error, :too_long_lifetime, "Token lifetem is too long than expected"}
+          {:error, :too_long_lifetime, "Token lifetime is higher than expected"}
         else
           if exp > :os.system_time(:second) do
             {:ok}
           else
-            {:error, :expired_token, "Expired token"}
+            {:error, :token_expired, "Token expired"}
           end
         end
 
       _ ->
-        {:error, :bad_exp_iat_claim, "Bad exp or iat claim"}
+        {:error, :invalid_exp_iat_claim, "Bad exp or iat claim"}
     end
   end
 
@@ -120,8 +121,6 @@ defmodule Neurow.JwtAuthPlug do
   end
 
   defp forbidden(conn, error_code, error_message) do
-
-    Logger.error("JWT auth check error: #{error_code}")
     {:ok, response} =
       Jason.encode(%{
         errors: [
