@@ -28,7 +28,7 @@ defmodule Neurow.PublicApi do
           |> put_resp_header("access-control-allow-origin", "*")
           |> put_resp_header("x-sse-server", to_string(node()))
 
-        :ok = Phoenix.PubSub.subscribe(SSEDispatcher.PubSub, topic)
+        :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
 
         conn = send_chunked(conn, 200)
 

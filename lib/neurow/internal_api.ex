@@ -59,7 +59,7 @@ defmodule Neurow.InternalApi do
     message_id = to_string(:os.system_time(:millisecond))
 
     :ok =
-      Phoenix.PubSub.broadcast!(SSEDispatcher.PubSub, topic, {:pubsub_message, message_id, message})
+      Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, message_id, message})
 
     Logger.debug("Message published on topic: #{topic}")
     Stats.inc_msg_received()
