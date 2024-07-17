@@ -4,7 +4,7 @@ echo "*** Neurow ***"
 
 if [ "$POD_IP" != "" ]; then
   export RELEASE_DISTRIBUTION="name"
-  export RELEASE_NODE="sse_dispatcher@${POD_IP}"
+  export RELEASE_NODE="neurow@${POD_IP}"
   echo "Starting Elixir daemon in kubernetes, node: $RELEASE_NODE"
 else
   echo "Starting Elixir daemon"
