@@ -20,10 +20,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
-        with:
-          otp-version: 26
-          elixir-version: 1.17
-      - run: mix format --check-formatted
-      - run: mix deps.get
-      - run: mix compile --warnings-as-errors
+      - run: docker build .
