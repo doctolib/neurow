@@ -24,7 +24,7 @@ RUN mix release
 FROM ${BUILDER_IMAGE}
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends haproxy curl dnsutils
+  && apt-get install -y --no-install-recommends curl dnsutils
 
 RUN mkdir /app
 WORKDIR /app
