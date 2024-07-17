@@ -11,7 +11,7 @@ defmodule InternalApi do
   get "/" do
     conn
     |> put_resp_header("content-type", "text/html")
-    |> send_file(200, "priv/static/sse.html")
+    |> send_resp(200, "ok")
   end
 
   get "/ping" do
