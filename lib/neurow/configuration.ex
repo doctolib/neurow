@@ -15,7 +15,7 @@ defmodule Neurow.Configuration do
 
   @impl true
   def init(_opts) do
-    {:ok, %{public_issuer_jwks: build_public_issuer_jwks(), internal_issuer_jwks: build_internal_issuer_jwks()}}
+    {:ok, %{public_issuer_jwks: build_issuer_jwks(:public_issuers), internal_issuer_jwks: build_issuer_jwks(:internal_issuers)}}
   end
 
   @impl true
@@ -28,16 +28,8 @@ defmodule Neurow.Configuration do
     {:reply, state[:internal_issuer_jwks][issuer_name], state}
   end
 
-  defp build_public_issuer_jwks do
-    Application.fetch_env!(:neurow, :public_issuers)
-    |> Enum.map(fn {issuer_name, public_key} ->
-      {to_string(issuer_name), JOSE.JWK.from_pem(public_key)}
-    end)
-    |> Map.new()
-  end
-
-  defp build_internal_issuer_jwks do
-    Application.fetch_env!(:neurow, :internal_issuers)
+  defp build_issuer_jwks(issuers_scope) do
+    Application.fetch_env!(:neurow, issuers_scope)
     |> Enum.map(fn {issuer_name, shared_secret} ->
       {to_string(issuer_name), JOSE.JWK.from_oct(shared_secret)}
     end)

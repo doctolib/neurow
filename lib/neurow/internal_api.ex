@@ -6,7 +6,7 @@ defmodule Neurow.InternalApi do
   plug(MetricsPlugExporter)
 
   plug(Neurow.JwtAuthPlug,
-    allowed_algorithm: "HS256",
+    allowed_algorithm: "RS256",
     jwk_provider: &Neurow.Configuration.internal_issuer_jwks/1,
     max_lifetime: 60 * 2,
     audience: "internal_api"
