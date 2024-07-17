@@ -330,7 +330,7 @@ defmodule Neurow.JwtAuthPlugTest do
       assert error_code(response) == "token_expired", "Response body error code"
     end
 
-    test "should deny access if the token lifetime is higher than expected" , %{
+    test "should deny access if the token lifetime is higher than expected", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload()
@@ -357,7 +357,7 @@ defmodule Neurow.JwtAuthPlugTest do
   end
 
   describe "token audience" do
-    test "should deny access if the aud claim is not provided"  , %{
+    test "should deny access if the aud claim is not provided", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.delete("aud")
@@ -377,7 +377,7 @@ defmodule Neurow.JwtAuthPlugTest do
       assert error_code(response) == "missing_aud_claim", "Response body error code"
     end
 
-    test "should deny access if the aud claim does not match the expected audience" , %{
+    test "should deny access if the aud claim does not match the expected audience", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.put("aud", "invalid_audience")
