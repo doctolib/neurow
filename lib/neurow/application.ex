@@ -26,7 +26,7 @@ defmodule Neurow.Application do
     {sse_http_scheme, public_api_http_config} =
       if ssl_keyfile != nil do
         Logger.warning(
-          "Starting public api on port #{public_api_port}, with keyfile: #{ssl_keyfile}, certfile: #{ssl_certfile}"
+          "Starting public API on port #{public_api_port}, with keyfile: #{ssl_keyfile}, certfile: #{ssl_certfile}"
         )
 
         http_config =
@@ -38,7 +38,7 @@ defmodule Neurow.Application do
 
         {:https, http_config}
       else
-        Logger.warning("Starting public api on port #{public_api_port} without SSL")
+        Logger.warning("Starting public API on port #{public_api_port} without SSL")
         {:http, base_public_api_http_config}
       end
 
