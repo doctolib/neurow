@@ -6,8 +6,8 @@ permissions:
 
 on:
   push:
-    # branches:
-    #   - master
+    branches:
+      - main
 
 jobs:
   docker_push:
