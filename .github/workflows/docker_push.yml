@@ -2,8 +2,8 @@ name: Docker push
 
 on:
   push:
-    branches:
-      - master
+    # branches:
+    #   - master
 
 jobs:
   docker_push:
