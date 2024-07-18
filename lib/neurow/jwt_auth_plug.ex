@@ -166,7 +166,6 @@ defmodule Neurow.JwtAuthPlug do
   end
 
   defp forbidden(conn, error_code, error_message, options) do
-    dbg(options)
 
     Logger.debug(
       "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience} error: #{error_code} - #{error_message}"

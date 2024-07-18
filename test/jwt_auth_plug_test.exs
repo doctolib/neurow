@@ -1,4 +1,5 @@
 defmodule Neurow.JwtAuthPlugTest do
+  alias Neurow.JwtAuthPlug
   use ExUnit.Case
   use Plug.Test
 
@@ -14,10 +15,8 @@ defmodule Neurow.JwtAuthPlugTest do
     {:ok,
      default_opts:
        Neurow.JwtAuthPlug.init(%{
-         allowed_algorithm: "HS256",
-         max_lifetime: 60 * 2,
-         audience: fn -> @test_audience end,
-         verbose_authentication_errors: fn -> true end,
+         audience: @test_audience,
+         verbose_authentication_errors: true,
          jwk_provider: fn issuer ->
            case issuer do
              "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]
@@ -45,6 +44,27 @@ defmodule Neurow.JwtAuthPlugTest do
     refute response.resp_body
     assert response.assigns[:jwt_payload] == jwt_payload
   end
+
+
+  test "does not provide details about authentication errors if verbose_authentication_errors is set to false",
+  %{
+    default_opts: opts
+  } do
+    response =
+      Neurow.JwtAuthPlug.call(
+        conn(:get, "/test") |> put_req_header("authorization", "Basic dXNlcjpwYXNzd29yZA=="),
+        %JwtAuthPlug.Options{ opts | verbose_authentication_errors: false}
+      )
+
+    assert response.halted
+    assert 403 == response.status, "HTTP status"
+
+    assert {"content-type", "application/json"} in response.resp_headers,
+           "Response content type"
+
+    assert error_code(response) == "invalid_authentication_token", "Response body error code"
+  end
+
 
   describe "Authorization header" do
     test "should deny access if the authorization header is not provided", %{default_opts: opts} do
