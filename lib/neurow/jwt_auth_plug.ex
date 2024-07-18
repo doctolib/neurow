@@ -10,9 +10,9 @@ defmodule Neurow.JwtAuthPlug do
       {:ok, jwt_token_str} ->
         case parse_jwt_token(jwt_token_str) do
           {:ok, _protected, payload} ->
-            case fetch_jwk_from_issuer(payload, options) do
-              {:ok, jwk} ->
-                case check_signature(jwt_token_str, jwk, options) do
+            case fetch_jwks_from_issuer(payload, options) do
+              {:ok, jwks} ->
+                case check_signature(jwt_token_str, jwks, options) do
                   {:ok} ->
                     case check_expiration(payload, options) do
                       {:ok} ->
@@ -63,13 +63,13 @@ defmodule Neurow.JwtAuthPlug do
     end
   end
 
-  defp fetch_jwk_from_issuer(payload, options) do
+  defp fetch_jwks_from_issuer(payload, options) do
     case payload do
       %JOSE.JWT{fields: %{"iss" => issuer}} ->
-        jwk = options[:jwk_provider].(issuer)
+        jwks = options[:jwk_provider].(issuer)
 
-        if jwk != nil do
-          {:ok, jwk}
+        if jwks != nil && !Enum.empty?(jwks) do
+          {:ok, jwks}
         else
           {:error, :unkown_issuer, "Unknown issuer"}
         end
@@ -79,11 +79,19 @@ defmodule Neurow.JwtAuthPlug do
     end
   end
 
-  defp check_signature(jwt_token_str, jwk, options) do
-    case JOSE.JWT.verify_strict(jwk, [options[:allowed_algorithm]], jwt_token_str) do
-      {true, _jwt, _jws} -> {:ok}
-      {false, _jwt, _jws} -> {:error, :invalid_signature, "Signature error"}
-      _ -> {:error, :invalid_signature, "Signature error"}
+  defp check_signature(jwt_token_str, jwks, options) do
+    valid_jwk =
+      Enum.find_value(jwks, false, fn jwk ->
+        case JOSE.JWT.verify_strict(jwk, [options[:allowed_algorithm]], jwt_token_str) do
+          {true, _jwt, _jws} -> true
+          {false, _jwt, _jws} -> false
+          _ -> false
+        end
+      end)
+
+    case valid_jwk do
+      true -> {:ok}
+      false -> {:error, :invalid_signature, "Signature error"}
     end
   end
 

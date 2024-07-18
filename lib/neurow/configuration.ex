@@ -34,8 +34,15 @@ defmodule Neurow.Configuration do
 
   defp build_issuer_jwks(issuers_scope) do
     Application.fetch_env!(:neurow, issuers_scope)
-    |> Enum.map(fn {issuer_name, shared_secret} ->
-      {to_string(issuer_name), JOSE.JWK.from_oct(shared_secret)}
+    |> Enum.map(fn {issuer_name, shared_secrets} ->
+      {to_string(issuer_name),
+       case is_list(shared_secrets) do
+         true ->
+           shared_secrets |> Enum.map(fn shared_secret -> JOSE.JWK.from_oct(shared_secret) end)
+
+         false ->
+           [JOSE.JWK.from_oct(shared_secrets)]
+       end}
     end)
     |> Map.new()
   end

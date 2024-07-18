@@ -15,11 +15,17 @@ config :neurow, ssl_keyfile: System.get_env("SSL_KEYFILE")
 config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
 
 config :neurow,
-  public_issuers: [
-    test_issuer1: "966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc",
+  public_issuers: %{
+    test_issuer1: [
+      "966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc",
+      "fu5E9VxCL8nhMG7jT4IXv3xarX8WIT7R-1pWFGm-sVw"
+    ],
     test_issuer2: "XXXX"
-  ],
-  internal_issuers: [
-    test_issuer1: "nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg",
+  },
+  internal_issuers: %{
+    test_issuer1: [
+      "nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg",
+      "3opQEJI3WK9ovGm9pHUQ6I3SkjlDYWZUeAUSazjv05g"
+    ],
     test_issuer2: "XXXX"
-  ]
+  }
