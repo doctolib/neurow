@@ -17,7 +17,7 @@ config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
 case config_env() do
   :prod ->
     {:ok, interservice_json_config} =
-      Jason.decode(System.fetch_env!("INTERSERVICE_SERVER_NEURO_CONFIG"))
+      Jason.decode(System.fetch_env!("INTERSERVICE_SERVER_NEUROW_CONFIG"))
 
     config :neurow,
       public_api_authentication: %{
