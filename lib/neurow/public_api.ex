@@ -6,10 +6,10 @@ defmodule Neurow.PublicApi do
   plug(:monitor_sse)
 
   plug(Neurow.JwtAuthPlug,
-    allowed_algorithm: "RS256",
-    jwk_provider: &Neurow.Configuration.public_issuer_jwks/1,
-    max_lifetime: 60 * 2,
-    audience: "public_api"
+    jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
+    audience: &Neurow.Configuration.public_api_audience/0,
+    verbose_authentication_errors:
+      &Neurow.Configuration.public_api_verbose_authentication_errors/0
   )
 
   plug(:match)

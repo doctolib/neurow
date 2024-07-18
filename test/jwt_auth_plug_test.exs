@@ -12,18 +12,20 @@ defmodule Neurow.JwtAuthPlugTest do
 
   setup_all do
     {:ok,
-     default_opts: %{
-       allowed_algorithm: "HS256",
-       max_lifetime: 60 * 2,
-       audience: @test_audience,
-       jwk_provider: fn issuer ->
-         case issuer do
-           "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]
-           "issuer_2" -> [@issuer_2_jwk]
-           _ -> nil
+     default_opts:
+       Neurow.JwtAuthPlug.init(%{
+         allowed_algorithm: "HS256",
+         max_lifetime: 60 * 2,
+         audience: fn -> @test_audience end,
+         verbose_authentication_errors: fn -> true end,
+         jwk_provider: fn issuer ->
+           case issuer do
+             "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]
+             "issuer_2" -> [@issuer_2_jwk]
+             _ -> nil
+           end
          end
-       end
-     }}
+       })}
   end
 
   test "should forward the request to the plug pipeline if a valid JWT token is provided in the request",
@@ -355,7 +357,7 @@ defmodule Neurow.JwtAuthPlugTest do
       jwt_payload =
         jwt_payload
         |> Map.put("iat", :os.system_time(:second) - 10)
-        |> Map.put("exp", jwt_payload["iat"] + opts[:max_lifetime] + 1)
+        |> Map.put("exp", jwt_payload["iat"] + opts.max_lifetime + 1)
 
       response =
         Neurow.JwtAuthPlug.call(

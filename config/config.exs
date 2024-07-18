@@ -14,18 +14,20 @@ config :neurow, sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || 
 config :neurow, ssl_keyfile: System.get_env("SSL_KEYFILE")
 config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
 
+# Must be override in per env configuration files
 config :neurow,
-  public_issuers: %{
-    test_issuer1: [
-      "966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc",
-      "fu5E9VxCL8nhMG7jT4IXv3xarX8WIT7R-1pWFGm-sVw"
-    ],
-    test_issuer2: "XXXX"
-  },
-  internal_issuers: %{
-    test_issuer1: [
-      "nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg",
-      "3opQEJI3WK9ovGm9pHUQ6I3SkjlDYWZUeAUSazjv05g"
-    ],
-    test_issuer2: "XXXX"
+  public_api_authentication: %{
+    verbose_authentication_errors: false,
+    audience: "public_api",
+    issuers: %{}
   }
+
+# Must be override in per env configuration files
+config :neurow,
+  internal_api_authentication: %{
+    audience: "internal_api",
+    verbose_authentication_errors: false,
+    issuers: %{}
+  }
+
+import_config "#{config_env()}.exs"

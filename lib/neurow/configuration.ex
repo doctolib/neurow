@@ -5,35 +5,57 @@ defmodule Neurow.Configuration do
     GenServer.start_link(__MODULE__, default, name: __MODULE__)
   end
 
-  def public_issuer_jwks(issuer_name) do
-    GenServer.call(__MODULE__, {:public_issuer_jwks, issuer_name})
+  def public_api_issuer_jwks(issuer_name) do
+    GenServer.call(__MODULE__, {:public_api_issuer_jwks, issuer_name})
   end
 
-  def internal_issuer_jwks(issuer_name) do
-    GenServer.call(__MODULE__, {:internal_issuer_jwks, issuer_name})
+  def public_api_audience do
+    Application.fetch_env!(:neurow, :public_api_authentication)[:audience]
+  end
+
+  def public_api_verbose_authentication_errors do
+    Application.fetch_env!(:neurow, :public_api_authentication)[:verbose_authentication_errors]
+  end
+
+  def internal_api_issuer_jwks(issuer_name) do
+    GenServer.call(__MODULE__, {:internal_api_issuer_jwks, issuer_name})
+  end
+
+  def internal_api_audience do
+    Application.fetch_env!(:neurow, :internal_api_authentication)[:audience]
+  end
+
+  def internal_api_verbose_authentication_errors do
+    Application.fetch_env!(:neurow, :internal_api_authentication)[
+      :verbose_authentication_errors
+    ]
   end
 
   @impl true
   def init(_opts) do
     {:ok,
      %{
-       public_issuer_jwks: build_issuer_jwks(:public_issuers),
-       internal_issuer_jwks: build_issuer_jwks(:internal_issuers)
+       public_api: %{
+         issuer_jwks: build_issuer_jwks(:public_api_authentication)
+       },
+       internal_api: %{
+         issuer_jwks: build_issuer_jwks(:internal_api_authentication)
+       }
      }}
   end
 
   @impl true
-  def handle_call({:public_issuer_jwks, issuer_name}, _from, state) do
-    {:reply, state[:public_issuer_jwks][issuer_name], state}
+  def handle_call({:public_api_issuer_jwks, issuer_name}, _from, state) do
+    {:reply, state[:public_api][:issuer_jwks][issuer_name], state}
   end
 
   @impl true
-  def handle_call({:internal_issuer_jwks, issuer_name}, _from, state) do
-    {:reply, state[:internal_issuer_jwks][issuer_name], state}
+  def handle_call({:internal_api_issuer_jwks, issuer_name}, _from, state) do
+    {:reply, state[:internal_api][:issuer_jwks][issuer_name], state}
   end
 
-  defp build_issuer_jwks(issuers_scope) do
-    Application.fetch_env!(:neurow, issuers_scope)
+  defp build_issuer_jwks(api_authentication_scope) do
+    Application.fetch_env!(:neurow, api_authentication_scope)[:issuers]
     |> Enum.map(fn {issuer_name, shared_secrets} ->
       {to_string(issuer_name),
        case is_list(shared_secrets) do

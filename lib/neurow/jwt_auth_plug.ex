@@ -3,7 +3,44 @@ defmodule Neurow.JwtAuthPlug do
 
   import Plug.Conn
 
-  def init(options), do: options
+  defmodule Options do
+    defstruct [
+      :jwk_provider,
+      :audience,
+      allowed_algorithm: "HS256",
+      max_lifetime: 60 * 2,
+      verbose_authentication_errors: false
+    ]
+
+    def allowed_algorithm(options) do
+      if is_function(options.allowed_algorithm),
+        do: options.allowed_algorithm.(),
+        else: options.allowed_algorithm
+    end
+
+    def audience(options) do
+      if is_function(options.audience),
+        do: options.audience.(),
+        else: options.audience
+    end
+
+    def max_lifetime(options) do
+      if is_function(options.max_lifetime),
+        do: options.max_lifetime.(),
+        else: options.max_lifetime
+    end
+
+    def verbose_authentication_errors?(options) do
+      if is_function(options.verbose_authentication_errors),
+      do: options.verbose_authentication_errors.(),
+      else: options.verbose_authentication_errors
+    end
+
+    def jwk_provider(options, issuer_name), do: options.jwk_provider.(issuer_name)
+  end
+
+
+  def init(options), do: struct(Options, options)
 
   def call(conn, options) do
     case jwt_token_from_request(conn) do
@@ -18,27 +55,27 @@ defmodule Neurow.JwtAuthPlug do
                       {:ok} ->
                         case check_audience(payload, options) do
                           {:ok} -> conn |> assign(:jwt_payload, payload.fields)
-                          {:error, code, message} -> conn |> forbidden(code, message)
+                          {:error, code, message} -> conn |> forbidden(code, message, options)
                         end
 
                       {:error, code, message} ->
-                        conn |> forbidden(code, message)
+                        conn |> forbidden(code, message, options)
                     end
 
                   {:error, code, message} ->
-                    conn |> forbidden(code, message)
+                    conn |> forbidden(code, message, options)
                 end
 
               {:error, code, message} ->
-                conn |> forbidden(code, message)
+                conn |> forbidden(code, message, options)
             end
 
           {:error, code, message} ->
-            conn |> forbidden(code, message)
+            conn |> forbidden(code, message, options)
         end
 
       {:error, code, message} ->
-        conn |> forbidden(code, message)
+        conn |> forbidden(code, message, options)
     end
   end
 
@@ -66,7 +103,7 @@ defmodule Neurow.JwtAuthPlug do
   defp fetch_jwks_from_issuer(payload, options) do
     case payload do
       %JOSE.JWT{fields: %{"iss" => issuer}} ->
-        jwks = options[:jwk_provider].(issuer)
+        jwks = options |> Options.jwk_provider(issuer)
 
         if jwks != nil && !Enum.empty?(jwks) do
           {:ok, jwks}
@@ -82,7 +119,7 @@ defmodule Neurow.JwtAuthPlug do
   defp check_signature(jwt_token_str, jwks, options) do
     valid_jwk =
       Enum.find_value(jwks, false, fn jwk ->
-        case JOSE.JWT.verify_strict(jwk, [options[:allowed_algorithm]], jwt_token_str) do
+        case JOSE.JWT.verify_strict(jwk, [options |> Options.allowed_algorithm], jwt_token_str) do
           {true, _jwt, _jws} -> true
           {false, _jwt, _jws} -> false
           _ -> false
@@ -99,7 +136,7 @@ defmodule Neurow.JwtAuthPlug do
     case payload do
       %JOSE.JWT{fields: %{"exp" => exp, "iat" => iat}}
       when is_integer(exp) and is_integer(iat) and exp > iat ->
-        if exp - iat > options[:max_lifetime] do
+        if exp - iat > options |> Options.max_lifetime do
           {:error, :too_long_lifetime, "Token lifetime is higher than expected"}
         else
           if exp > :os.system_time(:second) do
@@ -117,7 +154,7 @@ defmodule Neurow.JwtAuthPlug do
   defp check_audience(payload, options) do
     case payload do
       %JOSE.JWT{fields: %{"aud" => audience}} ->
-        if audience == options[:audience] do
+        if audience == options |> Options.audience do
           {:ok}
         else
           {:error, :unknwon_audience, "Unkown audience"}
@@ -128,11 +165,24 @@ defmodule Neurow.JwtAuthPlug do
     end
   end
 
-  defp forbidden(conn, error_code, error_message) do
+  defp forbidden(conn, error_code, error_message, options) do
+    dbg(options)
+
+    Logger.debug(
+      "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience} error: #{error_code} - #{error_message}"
+    )
+
     {:ok, response} =
       Jason.encode(%{
         errors: [
-          %{error_code: error_code, error_message: error_message}
+          if options |> Options.verbose_authentication_errors? do
+            %{error_code: error_code, error_message: error_message}
+          else
+            %{
+              error_code: "invalid_authentication_token",
+              error_message: "Invalid authentication token"
+            }
+          end
         ]
       })
 
