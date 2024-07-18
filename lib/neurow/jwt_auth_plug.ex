@@ -54,6 +54,7 @@ defmodule Neurow.JwtAuthPlug do
     else
       {:error, code, message} ->
         conn |> forbidden(code, message, options)
+
       _ ->
         conn |> forbidden(:authentication_error, "Authentication error", options)
     end
