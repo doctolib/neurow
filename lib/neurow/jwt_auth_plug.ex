@@ -32,50 +32,30 @@ defmodule Neurow.JwtAuthPlug do
 
     def verbose_authentication_errors?(options) do
       if is_function(options.verbose_authentication_errors),
-      do: options.verbose_authentication_errors.(),
-      else: options.verbose_authentication_errors
+        do: options.verbose_authentication_errors.(),
+        else: options.verbose_authentication_errors
     end
 
     def jwk_provider(options, issuer_name), do: options.jwk_provider.(issuer_name)
   end
 
-
   def init(options), do: struct(Options, options)
 
   def call(conn, options) do
-    case jwt_token_from_request(conn) do
-      {:ok, jwt_token_str} ->
-        case parse_jwt_token(jwt_token_str) do
-          {:ok, _protected, payload} ->
-            case fetch_jwks_from_issuer(payload, options) do
-              {:ok, jwks} ->
-                case check_signature(jwt_token_str, jwks, options) do
-                  {:ok} ->
-                    case check_expiration(payload, options) do
-                      {:ok} ->
-                        case check_audience(payload, options) do
-                          {:ok} -> conn |> assign(:jwt_payload, payload.fields)
-                          {:error, code, message} -> conn |> forbidden(code, message, options)
-                        end
-
-                      {:error, code, message} ->
-                        conn |> forbidden(code, message, options)
-                    end
-
-                  {:error, code, message} ->
-                    conn |> forbidden(code, message, options)
-                end
-
-              {:error, code, message} ->
-                conn |> forbidden(code, message, options)
-            end
-
-          {:error, code, message} ->
-            conn |> forbidden(code, message, options)
-        end
-
+    with(
+      {:ok, jwt_token_str} <- jwt_token_from_request(conn),
+      {:ok, _protected, payload} <- parse_jwt_token(jwt_token_str),
+      {:ok, jwks} <- fetch_jwks_from_issuer(payload, options),
+      {:ok} <- check_signature(jwt_token_str, jwks, options),
+      {:ok} <- check_expiration(payload, options),
+      {:ok} <- check_audience(payload, options)
+    ) do
+      conn |> assign(:jwt_payload, payload.fields)
+    else
       {:error, code, message} ->
         conn |> forbidden(code, message, options)
+      _ ->
+        conn |> forbidden(:authentication_error, "Authentication error", options)
     end
   end
 
@@ -119,7 +99,7 @@ defmodule Neurow.JwtAuthPlug do
   defp check_signature(jwt_token_str, jwks, options) do
     valid_jwk =
       Enum.find_value(jwks, false, fn jwk ->
-        case JOSE.JWT.verify_strict(jwk, [options |> Options.allowed_algorithm], jwt_token_str) do
+        case JOSE.JWT.verify_strict(jwk, [options |> Options.allowed_algorithm()], jwt_token_str) do
           {true, _jwt, _jws} -> true
           {false, _jwt, _jws} -> false
           _ -> false
@@ -136,7 +116,7 @@ defmodule Neurow.JwtAuthPlug do
     case payload do
       %JOSE.JWT{fields: %{"exp" => exp, "iat" => iat}}
       when is_integer(exp) and is_integer(iat) and exp > iat ->
-        if exp - iat > options |> Options.max_lifetime do
+        if exp - iat > options |> Options.max_lifetime() do
           {:error, :too_long_lifetime, "Token lifetime is higher than expected"}
         else
           if exp > :os.system_time(:second) do
@@ -154,7 +134,7 @@ defmodule Neurow.JwtAuthPlug do
   defp check_audience(payload, options) do
     case payload do
       %JOSE.JWT{fields: %{"aud" => audience}} ->
-        if audience == options |> Options.audience do
+        if audience == options |> Options.audience() do
           {:ok}
         else
           {:error, :unknwon_audience, "Unkown audience"}
@@ -166,15 +146,14 @@ defmodule Neurow.JwtAuthPlug do
   end
 
   defp forbidden(conn, error_code, error_message, options) do
-
     Logger.debug(
-      "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience} error: #{error_code} - #{error_message}"
+      "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience()} error: #{error_code} - #{error_message}"
     )
 
     {:ok, response} =
       Jason.encode(%{
         errors: [
-          if options |> Options.verbose_authentication_errors? do
+          if options |> Options.verbose_authentication_errors?() do
             %{error_code: error_code, error_message: error_message}
           else
             %{

@@ -45,15 +45,14 @@ defmodule Neurow.JwtAuthPlugTest do
     assert response.assigns[:jwt_payload] == jwt_payload
   end
 
-
   test "does not provide details about authentication errors if verbose_authentication_errors is set to false",
-  %{
-    default_opts: opts
-  } do
+       %{
+         default_opts: opts
+       } do
     response =
       Neurow.JwtAuthPlug.call(
         conn(:get, "/test") |> put_req_header("authorization", "Basic dXNlcjpwYXNzd29yZA=="),
-        %JwtAuthPlug.Options{ opts | verbose_authentication_errors: false}
+        %JwtAuthPlug.Options{opts | verbose_authentication_errors: false}
       )
 
     assert response.halted
@@ -64,7 +63,6 @@ defmodule Neurow.JwtAuthPlugTest do
 
     assert error_code(response) == "invalid_authentication_token", "Response body error code"
   end
-
 
   describe "Authorization header" do
     test "should deny access if the authorization header is not provided", %{default_opts: opts} do
