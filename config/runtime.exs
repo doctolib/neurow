@@ -16,19 +16,22 @@ config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
 
 case config_env() do
   :prod ->
-    {:ok, interservice_json_config} = Jason.decode(System.fetch_env!("INTERSERVICE_SERVER_NEURO_CONFIG"))
+    {:ok, interservice_json_config} =
+      Jason.decode(System.fetch_env!("INTERSERVICE_SERVER_NEURO_CONFIG"))
 
-    config :neurow, public_api_authentication: %{
-      verbose_authentication_errors: false,
-      audience: interservice_json_config["service_name"],
-      issuers: interservice_json_config["clients"]
-    }
+    config :neurow,
+      public_api_authentication: %{
+        verbose_authentication_errors: false,
+        audience: interservice_json_config["service_name"],
+        issuers: interservice_json_config["clients"]
+      }
 
-    config :neurow, internal_api_authentication: %{
-      verbose_authentication_errors: false,
-      audience: interservice_json_config["service_name"],
-      issuers: interservice_json_config["clients"]
-    }
+    config :neurow,
+      internal_api_authentication: %{
+        verbose_authentication_errors: false,
+        audience: interservice_json_config["service_name"],
+        issuers: interservice_json_config["clients"]
+      }
 
   env when env in [:dev, :test] ->
     config :neurow,
@@ -50,5 +53,7 @@ case config_env() do
           test_issuer2: "3opQEJI3WK9ovGm9pHUQ6I3SkjlDYWZUeAUSazjv05g"
         }
       }
-  _ -> raise "Unsupported environment"
+
+  _ ->
+    raise "Unsupported environment"
 end
