@@ -34,7 +34,7 @@ defmodule Neurow.PublicApi do
 
         Logger.debug("Client subscribed to #{topic}")
 
-        conn |> loop(Application.fetch_env!(:sse_dispatcher, :sse_timeout))
+        conn |> loop(Application.fetch_env!(:neurow, :sse_timeout))
         Logger.debug("Client disconnected from #{topic}")
         conn
 
