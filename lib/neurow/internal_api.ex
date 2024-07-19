@@ -10,7 +10,7 @@ defmodule Neurow.InternalApi do
     audience: &Neurow.Configuration.internal_api_audience/0,
     verbose_authentication_errors:
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
-    exclude_path_prefixes: ["/ping"]
+    exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above"]
   )
 
   plug(:match)
@@ -29,7 +29,7 @@ defmodule Neurow.InternalApi do
     |> send_resp(200, "ok")
   end
 
-  get "v1/nodes" do
+  get "/nodes" do
     nodes = Node.list()
 
     conn
