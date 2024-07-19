@@ -67,6 +67,53 @@ defmodule Neurow.JwtAuthPlug do
     end
   end
 
+  @doc """
+  Utility method that generates jwt tokens for test purpose.
+  # It is intended to be used in a iex session, or in a mix task.
+  """
+  def generate_jwt_token(
+        issuer,
+        jwk_provider,
+        audience,
+        sub \\ nil,
+        lifetime \\ 60 * 2 - 1,
+        algorithm \\ "HS256"
+      ) do
+    iat = :os.system_time(:second)
+    exp = iat + lifetime
+
+    jws = %{
+      "alg" => algorithm
+    }
+
+    jwt =
+      if is_binary(sub),
+        do: %{
+          "iss" => issuer,
+          "exp" => exp,
+          "iat" => iat,
+          "aud" => audience,
+          "sub" => sub
+        },
+        else: %{
+          "iss" => issuer,
+          "exp" => exp,
+          "iat" => iat,
+          "aud" => audience
+        }
+
+    case jwk_provider.(issuer) do
+      [jwk] ->
+        jwk_provider.(issuer)
+        signed = JOSE.JWT.sign(jwk, jws, jwt)
+        {%{alg: :jose_jws_alg_hmac}, compact_signed} = JOSE.JWS.compact(signed)
+        compact_signed
+
+      nil ->
+        raise ArgumentError, message: "Unknown issuer '#{issuer}'"
+    end
+  end
+
   defp requires_jwt_authentication?(conn, options) do
     !Enum.any?(options.exclude_path_prefixes, fn excluded_path_prefix ->
       String.starts_with?(conn.request_path, excluded_path_prefix)
