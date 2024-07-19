@@ -12,13 +12,13 @@ jobs:
         with:
           otp-version: 26
           elixir-version: 1.17
-      - run: mix format --check-formatted
-      - run: mix deps.get
-      - run: mix compile --warnings-as-errors
-      - run: mix test
+      - run: cd neurow && mix format --check-formatted
+      - run: cd neurow && mix deps.get
+      - run: cd neurow && mix compile --warnings-as-errors
+      - run: cd neurow && mix test
 
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build .
+      - run: cd neurow && docker build .
