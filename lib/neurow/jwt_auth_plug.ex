@@ -9,7 +9,8 @@ defmodule Neurow.JwtAuthPlug do
       :audience,
       allowed_algorithm: "HS256",
       max_lifetime: 60 * 2,
-      verbose_authentication_errors: false
+      verbose_authentication_errors: false,
+      exclude_path_prefixes: []
     ]
 
     def allowed_algorithm(options) do
@@ -42,22 +43,34 @@ defmodule Neurow.JwtAuthPlug do
   def init(options), do: struct(Options, options)
 
   def call(conn, options) do
-    with(
-      {:ok, jwt_token_str} <- jwt_token_from_request(conn),
-      {:ok, _protected, payload} <- parse_jwt_token(jwt_token_str),
-      {:ok, jwks} <- fetch_jwks_from_issuer(payload, options),
-      {:ok} <- check_signature(jwt_token_str, jwks, options),
-      {:ok} <- check_expiration(payload, options),
-      {:ok} <- check_audience(payload, options)
-    ) do
-      conn |> assign(:jwt_payload, payload.fields)
-    else
-      {:error, code, message} ->
-        conn |> forbidden(code, message, options)
+    case requires_jwt_authentication?(conn, options) do
+      true ->
+        with(
+          {:ok, jwt_token_str} <- jwt_token_from_request(conn),
+          {:ok, _protected, payload} <- parse_jwt_token(jwt_token_str),
+          {:ok, jwks} <- fetch_jwks_from_issuer(payload, options),
+          {:ok} <- check_signature(jwt_token_str, jwks, options),
+          {:ok} <- check_expiration(payload, options),
+          {:ok} <- check_audience(payload, options)
+        ) do
+          conn |> assign(:jwt_payload, payload.fields)
+        else
+          {:error, code, message} ->
+            conn |> forbidden(code, message, options)
 
-      _ ->
-        conn |> forbidden(:authentication_error, "Authentication error", options)
+          _ ->
+            conn |> forbidden(:authentication_error, "Authentication error", options)
+        end
+
+      false ->
+        conn
     end
+  end
+
+  defp requires_jwt_authentication?(conn, options) do
+    !Enum.any?(options.exclude_path_prefixes, fn excluded_path_prefix ->
+      String.starts_with?(conn.request_path, excluded_path_prefix)
+    end)
   end
 
   defp jwt_token_from_request(conn) do

@@ -23,7 +23,8 @@ defmodule Neurow.JwtAuthPlugTest do
              "issuer_2" -> [@issuer_2_jwk]
              _ -> nil
            end
-         end
+         end,
+         exclude_path_prefixes: ["/excluded_path"]
        })}
   end
 
@@ -45,7 +46,34 @@ defmodule Neurow.JwtAuthPlugTest do
     assert response.assigns[:jwt_payload] == jwt_payload
   end
 
-  test "does not provide details about authentication errors if verbose_authentication_errors is set to false",
+  test "should not check authentication and forward the request to the plug pipeline if the request path matches a excluded path",
+       %{
+         default_opts: opts
+       } do
+    response =
+      Neurow.JwtAuthPlug.call(
+        conn(:get, "/excluded_path"),
+        opts
+      )
+
+    refute response.halted
+    refute response.status
+    refute response.resp_body
+    assert response.assigns[:jwt_payload] == nil
+
+    response =
+      Neurow.JwtAuthPlug.call(
+        conn(:get, "/excluded_path/subresource"),
+        opts
+      )
+
+    refute response.halted
+    refute response.status
+    refute response.resp_body
+    assert response.assigns[:jwt_payload] == nil
+  end
+
+  test "should not provide details about authentication errors if verbose_authentication_errors is set to false",
        %{
          default_opts: opts
        } do
