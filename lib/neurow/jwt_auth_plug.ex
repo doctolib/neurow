@@ -1,0 +1,186 @@
+defmodule Neurow.JwtAuthPlug do
+  require Logger
+
+  import Plug.Conn
+
+  defmodule Options do
+    defstruct [
+      :jwk_provider,
+      :audience,
+      allowed_algorithm: "HS256",
+      max_lifetime: 60 * 2,
+      verbose_authentication_errors: false,
+      exclude_path_prefixes: []
+    ]
+
+    def allowed_algorithm(options) do
+      if is_function(options.allowed_algorithm),
+        do: options.allowed_algorithm.(),
+        else: options.allowed_algorithm
+    end
+
+    def audience(options) do
+      if is_function(options.audience),
+        do: options.audience.(),
+        else: options.audience
+    end
+
+    def max_lifetime(options) do
+      if is_function(options.max_lifetime),
+        do: options.max_lifetime.(),
+        else: options.max_lifetime
+    end
+
+    def verbose_authentication_errors?(options) do
+      if is_function(options.verbose_authentication_errors),
+        do: options.verbose_authentication_errors.(),
+        else: options.verbose_authentication_errors
+    end
+
+    def jwk_provider(options, issuer_name), do: options.jwk_provider.(issuer_name)
+  end
+
+  def init(options), do: struct(Options, options)
+
+  def call(conn, options) do
+    case requires_jwt_authentication?(conn, options) do
+      true ->
+        with(
+          {:ok, jwt_token_str} <- jwt_token_from_request(conn),
+          {:ok, _protected, payload} <- parse_jwt_token(jwt_token_str),
+          {:ok, jwks} <- fetch_jwks_from_issuer(payload, options),
+          {:ok} <- check_signature(jwt_token_str, jwks, options),
+          {:ok} <- check_expiration(payload, options),
+          {:ok} <- check_audience(payload, options)
+        ) do
+          conn |> assign(:jwt_payload, payload.fields)
+        else
+          {:error, code, message} ->
+            conn |> forbidden(code, message, options)
+
+          _ ->
+            conn |> forbidden(:authentication_error, "Authentication error", options)
+        end
+
+      false ->
+        conn
+    end
+  end
+
+  defp requires_jwt_authentication?(conn, options) do
+    !Enum.any?(options.exclude_path_prefixes, fn excluded_path_prefix ->
+      String.starts_with?(conn.request_path, excluded_path_prefix)
+    end)
+  end
+
+  defp jwt_token_from_request(conn) do
+    case conn |> get_req_header("authorization") do
+      ["Bearer " <> jwt_token] ->
+        {:ok, jwt_token}
+
+      _ ->
+        {:error, :invalid_authorization_header, "Invalid authorization header"}
+    end
+  end
+
+  defp parse_jwt_token(jwt_token_str) do
+    try do
+      protected = JOSE.JWT.peek_protected(jwt_token_str)
+      payload = JOSE.JWT.peek_payload(jwt_token_str)
+      {:ok, protected, payload}
+    rescue
+      _ in Jason.DecodeError -> {:error, :invalid_jwt_token, "Invalid JWT token"}
+      _ in ArgumentError -> {:error, :invalid_jwt_token, "Invalid JWT token"}
+    end
+  end
+
+  defp fetch_jwks_from_issuer(payload, options) do
+    case payload do
+      %JOSE.JWT{fields: %{"iss" => issuer}} ->
+        jwks = options |> Options.jwk_provider(issuer)
+
+        if jwks != nil && !Enum.empty?(jwks) do
+          {:ok, jwks}
+        else
+          {:error, :unkown_issuer, "Unknown issuer"}
+        end
+
+      _ ->
+        {:error, :missing_iss_claim, "Mising iss claim"}
+    end
+  end
+
+  defp check_signature(jwt_token_str, jwks, options) do
+    valid_jwk =
+      Enum.find_value(jwks, false, fn jwk ->
+        case JOSE.JWT.verify_strict(jwk, [options |> Options.allowed_algorithm()], jwt_token_str) do
+          {true, _jwt, _jws} -> true
+          {false, _jwt, _jws} -> false
+          _ -> false
+        end
+      end)
+
+    case valid_jwk do
+      true -> {:ok}
+      false -> {:error, :invalid_signature, "Signature error"}
+    end
+  end
+
+  defp check_expiration(payload, options) do
+    case payload do
+      %JOSE.JWT{fields: %{"exp" => exp, "iat" => iat}}
+      when is_integer(exp) and is_integer(iat) and exp > iat ->
+        if exp - iat > options |> Options.max_lifetime() do
+          {:error, :too_long_lifetime, "Token lifetime is higher than expected"}
+        else
+          if exp > :os.system_time(:second) do
+            {:ok}
+          else
+            {:error, :token_expired, "Token expired"}
+          end
+        end
+
+      _ ->
+        {:error, :invalid_exp_iat_claim, "Bad exp or iat claim"}
+    end
+  end
+
+  defp check_audience(payload, options) do
+    case payload do
+      %JOSE.JWT{fields: %{"aud" => audience}} ->
+        if audience == options |> Options.audience() do
+          {:ok}
+        else
+          {:error, :unknwon_audience, "Unkown audience"}
+        end
+
+      _ ->
+        {:error, :missing_aud_claim, "Missing aud claim"}
+    end
+  end
+
+  defp forbidden(conn, error_code, error_message, options) do
+    Logger.debug(
+      "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience()} error: #{error_code} - #{error_message}"
+    )
+
+    {:ok, response} =
+      Jason.encode(%{
+        errors: [
+          if options |> Options.verbose_authentication_errors?() do
+            %{error_code: error_code, error_message: error_message}
+          else
+            %{
+              error_code: "invalid_authentication_token",
+              error_message: "Invalid authentication token"
+            }
+          end
+        ]
+      })
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> resp(:forbidden, response)
+    |> halt
+  end
+end

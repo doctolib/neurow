@@ -13,3 +13,47 @@ config :neurow, sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || 
 
 config :neurow, ssl_keyfile: System.get_env("SSL_KEYFILE")
 config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
+
+case config_env() do
+  :prod ->
+    {:ok, interservice_json_config} =
+      Jason.decode(System.fetch_env!("JWT_CONFIG"))
+
+    config :neurow,
+      public_api_authentication: %{
+        verbose_authentication_errors: false,
+        audience: interservice_json_config["service_name"],
+        issuers: interservice_json_config["clients"]
+      }
+
+    config :neurow,
+      internal_api_authentication: %{
+        verbose_authentication_errors: false,
+        audience: interservice_json_config["service_name"],
+        issuers: interservice_json_config["clients"]
+      }
+
+  env when env in [:dev, :test] ->
+    config :neurow,
+      public_api_authentication: %{
+        verbose_authentication_errors: true,
+        audience: "public_api",
+        issuers: %{
+          test_issuer1: "966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc",
+          test_issuer2: "fu5E9VxCL8nhMG7jT4IXv3xarX8WIT7R-1pWFGm-sVw"
+        }
+      }
+
+    config :neurow,
+      internal_api_authentication: %{
+        verbose_authentication_errors: true,
+        audience: "internal_api",
+        issuers: %{
+          test_issuer1: "nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg",
+          test_issuer2: "3opQEJI3WK9ovGm9pHUQ6I3SkjlDYWZUeAUSazjv05g"
+        }
+      }
+
+  _ ->
+    raise "Unsupported environment"
+end
