@@ -10,7 +10,7 @@ defmodule Neurow.InternalApi do
     audience: &Neurow.Configuration.internal_api_audience/0,
     verbose_authentication_errors:
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
-      exclude_path_prefixes: ["/ping"]
+    exclude_path_prefixes: ["/ping"]
   )
 
   plug(:match)
