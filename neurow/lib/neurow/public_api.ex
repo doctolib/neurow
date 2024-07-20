@@ -20,6 +20,12 @@ defmodule Neurow.PublicApi do
       %{"iss" => issuer, "sub" => sub} ->
         topic = "#{issuer}-#{sub}"
 
+        timeout =
+          case conn.req_headers |> List.keyfind("x-sse-timeout", 0) do
+            nil -> Application.fetch_env!(:neurow, :sse_timeout)
+            {"x-sse-timeout", timeout} -> String.to_integer(timeout)
+          end
+
         conn =
           conn
           |> put_resp_header("content-type", "text/event-stream")
@@ -34,12 +40,12 @@ defmodule Neurow.PublicApi do
 
         Logger.debug("Client subscribed to #{topic}")
 
-        conn |> loop(Application.fetch_env!(:neurow, :sse_timeout))
+        conn |> loop(timeout)
         Logger.debug("Client disconnected from #{topic}")
         conn
 
       _ ->
-        conn |> resp(:bad_request, "expected JWT claims are missing")
+        conn |> resp(:bad_request, "Expected JWT claims are missing")
     end
   end
 
