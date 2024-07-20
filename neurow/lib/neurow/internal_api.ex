@@ -49,27 +49,34 @@ defmodule Neurow.InternalApi do
     |> send_resp((cluster_size >= size && 200) || 404, "Cluster size: #{cluster_size}\n")
   end
 
-  post "v1/publish" do
+  post "/v1/publish" do
     issuer = conn.assigns[:jwt_payload]["iss"]
 
-    topic = "#{issuer}-#{conn.body_params["topic"]}"
-    message = conn.body_params["message"]
+    case extract_params(issuer, conn.body_params) do
+      {:ok, message, topic} ->
+        message_id = to_string(:os.system_time(:millisecond))
 
-    {:ok, body, _conn} = Plug.Conn.read_body(conn)
-    message_id = to_string(:os.system_time(:millisecond))
+        :ok =
+          Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, message_id, message})
 
-    :ok =
-      Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, message_id, message})
+        Logger.debug("Message published on topic: #{topic}")
+        Stats.inc_msg_received()
 
-    Logger.debug("Message published on topic: #{topic}")
-    Stats.inc_msg_received()
-
-    conn
-    |> put_resp_header("content-type", "text/html")
-    |> send_resp(200, "Published #{body} to #{topic}\n")
+        conn
+        |> put_resp_header("content-type", "text/html")
+        |> send_resp(200, "Published #{message} to #{topic}\n")
+      {:error, reason} ->
+        conn |> resp(:bad_request, reason)
+    end
   end
 
   match _ do
     send_resp(conn, 404, "")
+  end
+
+  defp extract_params(issuer, body_params) do
+    topic = "#{issuer}-#{body_params["topic"]}"
+    message = body_params["message"]
+    {:ok, message, topic}
   end
 end

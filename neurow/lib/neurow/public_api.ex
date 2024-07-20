@@ -15,7 +15,7 @@ defmodule Neurow.PublicApi do
   plug(:match)
   plug(:dispatch)
 
-  get "v1/subscribe" do
+  get "/v1/subscribe" do
     case conn.assigns[:jwt_payload] do
       %{"iss" => issuer, "sub" => sub} ->
         topic = "#{issuer}-#{sub}"
