@@ -1,4 +1,4 @@
-defmodule Neurow.InternalApiTest do
+defmodule Neurow.InternalApiUnitTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
