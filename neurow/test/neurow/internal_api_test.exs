@@ -27,29 +27,70 @@ defmodule Neurow.InternalApiTest do
     assert call.status == 403
   end
 
-  defp jwt_payload() do
-    iat = :os.system_time(:second)
-    exp = iat + (2 * 60 - 1)
+  test "POST /v1/publish 400 nil message" do
+    conn =
+      conn(:post, "/v1/publish")
+      |> put_jwt_token_in_req_header_internal_api()
 
-    %{
-      "iss" => "test_issuer1",
-      "exp" => exp,
-      "iat" => iat,
-      "aud" => "internal_api"
-    }
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 400
+    assert call.resp_body == "message is nil"
+  end
+
+  test "POST /v1/publish 400 empty message" do
+    {:ok, body} = Jason.encode(%{message: ""})
+
+    conn =
+      conn(:post, "/v1/publish", body)
+      |> put_jwt_token_in_req_header_internal_api()
+
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 400
+    assert call.resp_body == "message is empty"
+  end
+
+  test "POST /v1/publish 400 nil topic" do
+    {:ok, body} = Jason.encode(%{message: "foo"})
+
+    conn =
+      conn(:post, "/v1/publish", body)
+      |> put_jwt_token_in_req_header_internal_api()
+
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 400
+    assert call.resp_body == "topic is nil"
+  end
+
+  test "POST /v1/publish 400 empty topic" do
+    {:ok, body} = Jason.encode(%{message: "foo", topic: ""})
+
+    conn =
+      conn(:post, "/v1/publish", body)
+      |> put_jwt_token_in_req_header_internal_api()
+
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 400
+    assert call.resp_body == "topic is empty"
   end
 
   test "POST /v1/publish 200" do
-    jwt_payload = jwt_payload()
+    {:ok, body} = Jason.encode(%{message: "foo", topic: "bar"})
 
     conn =
-      conn(:post, "/v1/publish")
-      |> put_jwt_token_in_req_header(
-        jwt_payload,
-        JOSE.JWK.from_oct("nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg")
-      )
+      conn(:post, "/v1/publish", body)
+      |> put_jwt_token_in_req_header_internal_api()
 
     call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
+    assert call.resp_body == "Published foo to test_issuer1-bar\n"
+  end
+
+  test "POST /v1/publish 403" do
+    conn =
+      conn(:post, "/v1/publish")
+      |> put_jwt_token_in_req_header_internal_api("test_issuer_2")
+
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 403
   end
 end

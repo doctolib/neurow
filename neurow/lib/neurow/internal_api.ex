@@ -50,9 +50,7 @@ defmodule Neurow.InternalApi do
   end
 
   post "/v1/publish" do
-    issuer = conn.assigns[:jwt_payload]["iss"]
-
-    case extract_params(issuer, conn.body_params) do
+    case extract_params(conn) do
       {:ok, message, topic} ->
         message_id = to_string(:os.system_time(:millisecond))
 
@@ -75,9 +73,32 @@ defmodule Neurow.InternalApi do
     send_resp(conn, 404, "")
   end
 
-  defp extract_params(issuer, body_params) do
-    topic = "#{issuer}-#{body_params["topic"]}"
-    message = body_params["message"]
-    {:ok, message, topic}
+  defp extract_params(conn) do
+    with(
+      {:ok, issuer} <- extract_issuer(conn),
+      {:ok, message} <- extract_param(conn, "message"),
+      {:ok, topic} <- extract_param(conn, "topic")
+    ) do
+      full_topic = "#{issuer}-#{topic}"
+      {:ok, message, full_topic}
+    else
+      error -> error
+    end
+  end
+
+  defp extract_issuer(conn) do
+    case conn.assigns[:jwt_payload]["iss"] do
+      nil -> {:error, "JWT iss is nil"}
+      "" -> {:error, "JWT iss is empty"}
+      issuer -> {:ok, issuer}
+    end
+  end
+
+  defp extract_param(conn, key) do
+    case conn.body_params[key] do
+      nil -> {:error, "#{key} is nil"}
+      "" -> {:error, "#{key} is empty"}
+      output -> {:ok, output}
+    end
   end
 end
