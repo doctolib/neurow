@@ -17,13 +17,13 @@ defmodule Neurow.InternalApiTest do
 
   test "GET /foo 403" do
     conn = conn(:get, "/foo")
-    call =  Neurow.InternalApi.call(conn, [])
+    call = Neurow.InternalApi.call(conn, [])
     assert call.status == 403
   end
 
   test "GET /v1/publish 403" do
     conn = conn(:post, "/v1/publish")
-    call =  Neurow.InternalApi.call(conn, [])
+    call = Neurow.InternalApi.call(conn, [])
     assert call.status == 403
   end
 
@@ -41,8 +41,15 @@ defmodule Neurow.InternalApiTest do
 
   test "POST /v1/publish 200" do
     jwt_payload = jwt_payload()
-    conn = conn(:post, "/v1/publish") |> put_jwt_token_in_req_header(jwt_payload, JOSE.JWK.from_oct("nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg"))
-    call =  Neurow.InternalApi.call(conn, [])
+
+    conn =
+      conn(:post, "/v1/publish")
+      |> put_jwt_token_in_req_header(
+        jwt_payload,
+        JOSE.JWK.from_oct("nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg")
+      )
+
+    call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
   end
 end
