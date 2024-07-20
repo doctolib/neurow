@@ -21,7 +21,7 @@ defmodule SseUser do
       "iss" => context.sse_jwt_issuer,
       "exp" => exp,
       "iat" => iat,
-      "aud" => "public_api",
+      "aud" => context.sse_jwt_audience,
       "sub" => topic
     }
 

@@ -6,12 +6,14 @@ defmodule LoadTest.Main do
     defstruct [
       :sse_timeout,
       :sse_url,
-      :sse_jwt_secret,
       :sse_jwt_issuer,
+      :sse_jwt_secret,
+      :sse_jwt_audience,
       :publish_url,
       :publish_timeout,
       :publish_jwt_issuer,
       :publish_jwt_secret,
+      :publish_jwt_audience,
       :delay_between_messages_min,
       :delay_between_messages_max,
       :number_of_messages_min,
@@ -31,11 +33,13 @@ defmodule LoadTest.Main do
     {:ok, sse_url} = Application.fetch_env(:load_test, :sse_url)
     {:ok, sse_jwt_issuer} = Application.fetch_env(:load_test, :sse_jwt_issuer)
     {:ok, sse_jwt_secret} = Application.fetch_env(:load_test, :sse_jwt_secret)
+    {:ok, sse_jwt_audience} = Application.fetch_env(:load_test, :sse_jwt_audience)
 
     {:ok, publish_url} = Application.fetch_env(:load_test, :publish_url)
     {:ok, publish_timeout} = Application.fetch_env(:load_test, :publish_timeout)
     {:ok, publish_jwt_issuer} = Application.fetch_env(:load_test, :publish_jwt_issuer)
     {:ok, publish_jwt_secret} = Application.fetch_env(:load_test, :publish_jwt_secret)
+    {:ok, publish_jwt_audience} = Application.fetch_env(:load_test, :publish_jwt_audience)
 
     {:ok, delay_between_messages_min} =
       Application.fetch_env(:load_test, :delay_between_messages_min)
@@ -53,10 +57,12 @@ defmodule LoadTest.Main do
       sse_url: sse_url,
       sse_jwt_issuer: sse_jwt_issuer,
       sse_jwt_secret: JOSE.JWK.from_oct(sse_jwt_secret),
+      sse_jwt_audience: sse_jwt_audience,
       publish_url: publish_url,
       publish_timeout: publish_timeout,
       publish_jwt_issuer: publish_jwt_issuer,
       publish_jwt_secret: JOSE.JWK.from_oct(publish_jwt_secret),
+      publish_jwt_audience: publish_jwt_audience,
       delay_between_messages_min: delay_between_messages_min,
       delay_between_messages_max: delay_between_messages_max,
       number_of_messages_min: number_of_messages_min,

@@ -16,6 +16,9 @@ config :load_test,
     System.get_env("SSE_JWT_SECRET") || "966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc"
 
 config :load_test,
+  sse_jwt_audience: System.get_env("SSE_JWT_AUDIENCE") || "public_api"
+
+config :load_test,
   publish_url: System.get_env("PUBLISH_URL") || "http://localhost:3000/v1/publish"
 
 config :load_test, publish_timeout: String.to_integer(System.get_env("PUBLISH_TIMEOUT") || "5000")
@@ -28,6 +31,9 @@ config :load_test, publish_jwt_issuer: System.get_env("PUBLISH_JWT_ISSUER") || "
 config :load_test,
   publish_jwt_secret:
     System.get_env("PUBLISH_JWT_SECRET") || "nLjJdNLlpdv3W4Xk7MyVCAZKD-hvza6FQ4yhUUFnjmg"
+
+config :load_test,
+  publish_jwt_audience: System.get_env("PUBLISH_JWT_AUDIENCE") || "internal_api"
 
 config :load_test,
   delay_between_messages_min:

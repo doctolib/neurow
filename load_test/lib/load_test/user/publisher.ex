@@ -49,7 +49,7 @@ defmodule LoadTest.User.Publisher do
       "iss" => context.publish_jwt_issuer,
       "exp" => exp,
       "iat" => iat,
-      "aud" => "internal_api"
+      "aud" => context.publish_jwt_audience
     }
 
     jws = %{
