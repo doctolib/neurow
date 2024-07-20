@@ -19,16 +19,19 @@ case config_env() do
     {:ok, interservice_json_config} =
       Jason.decode(System.fetch_env!("JWT_CONFIG"))
 
+    verbose_authentication_errors =
+      (System.get_env("VERBOSE_AUTHENTICATION_ERRORS") || "false") == "true"
+
     config :neurow,
       public_api_authentication: %{
-        verbose_authentication_errors: false,
+        verbose_authentication_errors: verbose_authentication_errors,
         audience: interservice_json_config["service_name"],
         issuers: interservice_json_config["clients"]
       }
 
     config :neurow,
       internal_api_authentication: %{
-        verbose_authentication_errors: false,
+        verbose_authentication_errors: verbose_authentication_errors,
         audience: interservice_json_config["service_name"],
         issuers: interservice_json_config["clients"]
       }
