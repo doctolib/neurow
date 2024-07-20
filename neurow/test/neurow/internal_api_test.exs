@@ -21,6 +21,15 @@ defmodule Neurow.InternalApiTest do
     assert call.status == 403
   end
 
+  test "GET /foo 404" do
+    conn =
+      conn(:get, "/foo")
+      |> put_jwt_token_in_req_header_internal_api()
+
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 404
+  end
+
   test "GET /v1/publish 403" do
     conn = conn(:post, "/v1/publish")
     call = Neurow.InternalApi.call(conn, [])
