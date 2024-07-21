@@ -9,8 +9,11 @@ defmodule Neurow.PublicApi do
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
     audience: &Neurow.Configuration.public_api_audience/0,
     verbose_authentication_errors:
-      &Neurow.Configuration.public_api_verbose_authentication_errors/0
+      &Neurow.Configuration.public_api_verbose_authentication_errors/0,
+    max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0
   )
+
+  plug(Neurow.SseOptionsPlug, sse_timeout: &Neurow.Configuration.sse_timeout/0)
 
   plug(:match)
   plug(:dispatch)
@@ -22,7 +25,7 @@ defmodule Neurow.PublicApi do
 
         timeout =
           case conn.req_headers |> List.keyfind("x-sse-timeout", 0) do
-            nil -> Application.fetch_env!(:neurow, :sse_timeout)
+            nil -> conn.assigns[:sse_timeout]
             {"x-sse-timeout", timeout} -> String.to_integer(timeout)
           end
 

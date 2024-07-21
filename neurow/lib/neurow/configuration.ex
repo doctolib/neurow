@@ -31,6 +31,18 @@ defmodule Neurow.Configuration do
     ]
   end
 
+  def internal_api_jwt_max_lifetime do
+    Application.fetch_env!(:neurow, :internal_api_jwt_max_lifetime)
+  end
+
+  def public_api_jwt_max_lifetime do
+    Application.fetch_env!(:neurow, :public_api_jwt_max_lifetime)
+  end
+
+  def sse_timeout do
+    Application.fetch_env!(:neurow, :sse_timeout)
+  end
+
   @impl true
   def init(_opts) do
     {:ok,

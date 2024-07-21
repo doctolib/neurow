@@ -7,8 +7,8 @@ defmodule Neurow.JwtAuthPlug do
     defstruct [
       :jwk_provider,
       :audience,
+      :max_lifetime,
       allowed_algorithm: "HS256",
-      max_lifetime: 60 * 2,
       verbose_authentication_errors: false,
       exclude_path_prefixes: []
     ]

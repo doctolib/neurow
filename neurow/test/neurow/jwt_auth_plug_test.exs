@@ -17,6 +17,7 @@ defmodule Neurow.JwtAuthPlugTest do
        Neurow.JwtAuthPlug.init(%{
          audience: @test_audience,
          verbose_authentication_errors: true,
+         max_lifetime: 60 * 2,
          jwk_provider: fn issuer ->
            case issuer do
              "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]

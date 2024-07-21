@@ -10,6 +10,7 @@ defmodule Neurow.InternalApi do
     audience: &Neurow.Configuration.internal_api_audience/0,
     verbose_authentication_errors:
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
+    max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
     exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above"]
   )
 

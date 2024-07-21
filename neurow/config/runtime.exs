@@ -7,7 +7,15 @@ config :logger, :console,
 config :neurow, public_api_port: String.to_integer(System.get_env("PUBLIC_API_PORT") || "4000")
 
 config :neurow,
+  public_api_jwt_max_lifetime:
+    String.to_integer(System.get_env("PUBLIC_API_JWT_MAX_LIFETIME") || "120")
+
+config :neurow,
   internal_api_port: String.to_integer(System.get_env("INTERNAL_API_PORT") || "3000")
+
+config :neurow,
+  internal_api_jwt_max_lifetime:
+    String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "120")
 
 config :neurow, sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000")
 
