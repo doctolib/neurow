@@ -36,6 +36,7 @@ defmodule Neurow.PublicApi do
           |> put_resp_header("connection", "close")
           |> put_resp_header("access-control-allow-origin", "*")
           |> put_resp_header("x-sse-server", to_string(node()))
+          |> put_resp_header("x-sse-timeout", to_string(timeout))
 
         :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
 
