@@ -18,8 +18,16 @@ defmodule Stats do
       help: "SSE Messages"
     )
 
+    Gauge.declare(
+      name: :jwt_errors,
+      labels: [:kind],
+      help: "JWT Errors"
+    )
+
     Gauge.set([name: :current_connections], 0)
     Gauge.set([name: :connections], 0)
+    Gauge.set([name: :jwt_errors, labels: [:public]], 0)
+    Gauge.set([name: :jwt_errors, labels: [:internal]], 0)
     Gauge.set([name: :messages, labels: [:received]], 0)
     Gauge.set([name: :messages, labels: [:published]], 0)
   end
@@ -39,5 +47,13 @@ defmodule Stats do
 
   def inc_msg_published() do
     Gauge.inc(name: :messages, labels: [:published])
+  end
+
+  def inc_jwt_errors_public() do
+    Gauge.inc(name: :jwt_errors, labels: [:public])
+  end
+
+  def inc_jwt_errors_internal() do
+    Gauge.inc(name: :jwt_errors, labels: [:internal])
   end
 end

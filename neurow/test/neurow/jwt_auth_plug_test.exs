@@ -25,6 +25,7 @@ defmodule Neurow.JwtAuthPlugTest do
              _ -> nil
            end
          end,
+         count_error: fn -> :ok end,
          exclude_path_prefixes: ["/excluded_path"]
        })}
   end

@@ -8,6 +8,7 @@ defmodule Neurow.JwtAuthPlug do
       :jwk_provider,
       :audience,
       :max_lifetime,
+      :count_error,
       allowed_algorithm: "HS256",
       verbose_authentication_errors: false,
       exclude_path_prefixes: []
@@ -56,9 +57,11 @@ defmodule Neurow.JwtAuthPlug do
           conn |> assign(:jwt_payload, payload.fields)
         else
           {:error, code, message} ->
+            options.count_error.()
             conn |> forbidden(code, message, options)
 
           _ ->
+            options.count_error.()
             conn |> forbidden(:authentication_error, "Authentication error", options)
         end
 

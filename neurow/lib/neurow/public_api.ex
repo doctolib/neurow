@@ -10,7 +10,8 @@ defmodule Neurow.PublicApi do
     audience: &Neurow.Configuration.public_api_audience/0,
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
-    max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0
+    max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
+    count_error: &Stats.inc_jwt_errors_public/0
   )
 
   plug(Neurow.SseOptionsPlug, sse_timeout: &Neurow.Configuration.sse_timeout/0)
