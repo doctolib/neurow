@@ -43,7 +43,7 @@ defmodule LoadTest.User.Publisher do
 
   defp build_headers(context) do
     iat = :os.system_time(:second)
-    exp = iat + 60 * 2 - 1
+    exp = iat + 60 * 15 - 1
 
     jwt = %{
       "iss" => context.publish_jwt_issuer,
