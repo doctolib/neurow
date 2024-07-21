@@ -50,7 +50,17 @@ defmodule Neurow.Application do
       {Plug.Cowboy,
        scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
       {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
-      {StopListener, []}
+      {StopListener, []},
+      {Neurow.TopicManager, []},
+      Supervisor.child_spec({Neurow.Receiver, Neurow.TopicManager.build_topic(0)},
+        id: :receiver_1
+      ),
+      Supervisor.child_spec({Neurow.Receiver, Neurow.TopicManager.build_topic(1)},
+        id: :receiver_2
+      ),
+      Supervisor.child_spec({Neurow.Receiver, Neurow.TopicManager.build_topic(2)},
+        id: :receiver_3
+      )
     ]
 
     MetricsPlugExporter.setup()

@@ -1,5 +1,5 @@
 defmodule Neurow.InternalApiIntegrationTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   use Plug.Test
   import JwtHelper
 
@@ -24,7 +24,15 @@ defmodule Neurow.InternalApiIntegrationTest do
     call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
 
+    Process.sleep(10)
+
     assert_received {:pubsub_message, _, "foo56"}
     assert_received {:pubsub_message, _, "foo57"}
+
+    conn = conn(:get, "/history/test_issuer1-bar")
+    call = Neurow.InternalApi.call(conn, [])
+    assert call.status == 200
+    assert String.contains?(call.resp_body, "foo56")
+    assert String.contains?(call.resp_body, "foo57")
   end
 end

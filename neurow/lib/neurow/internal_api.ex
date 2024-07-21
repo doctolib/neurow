@@ -12,7 +12,7 @@ defmodule Neurow.InternalApi do
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
     count_error: &Stats.inc_jwt_errors_internal/0,
-    exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above"]
+    exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above", "/history"]
   )
 
   plug(:match)
@@ -51,13 +51,29 @@ defmodule Neurow.InternalApi do
     |> send_resp((cluster_size >= size && 200) || 404, "Cluster size: #{cluster_size}\n")
   end
 
+  get "/history/:topic" do
+    broadcast_topic = Neurow.TopicManager.hash_topic(topic, 3)
+    receiver = GenServer.call(Neurow.TopicManager, {:lookup_receiver, broadcast_topic})
+    history = GenServer.call(receiver, {:get_history, topic})
+
+    conn
+    |> put_resp_header("content-type", "text/plain")
+    |> send_resp(200, inspect(history))
+  end
+
   post "/v1/publish" do
     case extract_params(conn) do
       {:ok, message, topic} ->
-        message_id = to_string(:os.system_time(:millisecond))
+        message_id = :os.system_time(:millisecond)
+
+        broadcast_topic = Neurow.TopicManager.hash_topic(topic, 3)
 
         :ok =
-          Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, message_id, message})
+          Phoenix.PubSub.broadcast!(
+            Neurow.PubSub,
+            broadcast_topic,
+            {:pubsub_message, topic, message_id, message}
+          )
 
         Logger.debug("Message published on topic: #{topic}")
         Stats.inc_msg_received()

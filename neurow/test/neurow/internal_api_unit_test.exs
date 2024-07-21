@@ -1,5 +1,5 @@
 defmodule Neurow.InternalApiUnitTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   use Plug.Test
   import JwtHelper
 
