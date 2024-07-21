@@ -26,6 +26,9 @@ defmodule Neurow.PublicApiIntegrationTest do
       {:http, {_, :stream_start, headers}} ->
         {:start, headers}
 
+      {:http, {_, :stream_end, _}} ->
+        {:end}
+
       msg ->
         raise("Unexpected message: #{inspect(msg)}")
     after
@@ -101,6 +104,59 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert msg == "id: 42\ndata: hello\n\n"
     {:stream, msg} = next_message()
     assert msg == "id: 43\ndata: hello2\n\n"
+    :ok = :httpc.cancel_request(request_id)
+  end
+
+  test "GET /v1/subscribe 200 sse keepalive" do
+    url = "http://localhost:4000/v1/subscribe"
+
+    headers = [
+      {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo57")}"},
+      {["x-sse-keepalive"], "100"}
+    ]
+
+    {:ok, request_id} =
+      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+
+    {:start, headers} = next_message()
+    assert_headers(headers, {"content-type", "text/event-stream"})
+    assert_headers(headers, {"cache-control", "no-cache"})
+    assert_headers(headers, {"connection", "close"})
+
+    publish("test_issuer1-foo57", "42", "hello")
+    Process.sleep(1100)
+
+    {:stream, msg} = next_message()
+    assert msg == "id: 42\ndata: hello\n\n"
+    {:stream, msg} = next_message()
+    assert msg == "event: ping\n\n"
+    Process.sleep(1100)
+    {:stream, msg} = next_message()
+    assert msg == "event: ping\n\n"
+    :ok = :httpc.cancel_request(request_id)
+  end
+
+  test "GET /v1/subscribe 200 sse timeout" do
+    url = "http://localhost:4000/v1/subscribe"
+
+    headers = [
+      {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo57")}"},
+      {["x-sse-timeout"], "100"}
+    ]
+
+    {:ok, request_id} =
+      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+
+    {:start, headers} = next_message()
+    assert_headers(headers, {"content-type", "text/event-stream"})
+    assert_headers(headers, {"cache-control", "no-cache"})
+    assert_headers(headers, {"connection", "close"})
+
+    Process.sleep(1100)
+
+    {:stream, msg} = next_message()
+    assert msg == ""
+    {:end} = next_message()
     :ok = :httpc.cancel_request(request_id)
   end
 end
