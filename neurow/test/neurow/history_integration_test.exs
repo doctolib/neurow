@@ -22,6 +22,7 @@ defmodule Neurow.HistoryIntegrationTest do
     drop_one_message()
     drop_one_message()
     [[_, id]] = Regex.scan(~r/id=(\d+)/, call.resp_body)
+    Process.sleep(2)
     id
   end
 
@@ -105,6 +106,9 @@ defmodule Neurow.HistoryIntegrationTest do
     Enum.each(0..(length(expected_history) - 1), fn index ->
       assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["message"]
     end)
+
+    drop_one_message()
+    drop_one_message()
   end
 
   test "simple history" do
@@ -113,9 +117,7 @@ defmodule Neurow.HistoryIntegrationTest do
 
     publish_message("foo56", "bar")
 
-    full_history = history("test_issuer1-bar")
-    assert length(full_history) == 1
-    assert Enum.at(full_history, 0)["message"] == "foo56"
+    assert_history("test_issuer1-bar", ["foo56"])
   end
 
   test "no history no headers" do
@@ -151,16 +153,9 @@ defmodule Neurow.HistoryIntegrationTest do
 
   test "last-event-id" do
     first_id = publish_message("foo56", "bar")
-    Process.sleep(2)
     second_id = publish_message("foo57", "bar")
-    Process.sleep(2)
 
-    full_history = history("test_issuer1-bar")
-    assert length(full_history) == 2
-    assert Enum.at(full_history, 0)["message"] == "foo56"
-    assert Enum.at(full_history, 1)["message"] == "foo57"
-    drop_one_message()
-    drop_one_message()
+    assert_history("test_issuer1-bar", ["foo56", "foo57"])
 
     request_id = subscribe("bar")
 
@@ -201,9 +196,7 @@ defmodule Neurow.HistoryIntegrationTest do
   test "last-event-id multiple" do
     ids =
       Enum.map(0..100, fn chunk ->
-        id = publish_message("message #{chunk}", "bar")
-        Process.sleep(2)
-        id
+        publish_message("message #{chunk}", "bar")
       end)
 
     start = 11
