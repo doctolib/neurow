@@ -1,7 +1,7 @@
 defmodule Neurow.JwtAuthPlugTest do
-  alias Neurow.JwtAuthPlug
   use ExUnit.Case
   use Plug.Test
+  import JwtHelper
 
   # Can be generated with `JOSE.JWS.generate_key(%{"alg" => "HS256"}) |> JOSE.JWK.to_map |> elem(1)`
   @issuer_1_jwk_1 JOSE.JWK.from_oct("r0daWG1tSxMTSzD4MuxwMe46h19_cEhMmrn5mKLncKk")
@@ -17,6 +17,7 @@ defmodule Neurow.JwtAuthPlugTest do
        Neurow.JwtAuthPlug.init(%{
          audience: @test_audience,
          verbose_authentication_errors: true,
+         max_lifetime: 60 * 2,
          jwk_provider: fn issuer ->
            case issuer do
              "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]
@@ -24,6 +25,7 @@ defmodule Neurow.JwtAuthPlugTest do
              _ -> nil
            end
          end,
+         inc_error_callback: fn -> :ok end,
          exclude_path_prefixes: ["/excluded_path"]
        })}
   end
@@ -80,7 +82,7 @@ defmodule Neurow.JwtAuthPlugTest do
     response =
       Neurow.JwtAuthPlug.call(
         conn(:get, "/test") |> put_req_header("authorization", "Basic dXNlcjpwYXNzd29yZA=="),
-        %JwtAuthPlug.Options{opts | verbose_authentication_errors: false}
+        %Neurow.JwtAuthPlug.Options{opts | verbose_authentication_errors: false}
       )
 
     assert response.halted
@@ -463,11 +465,6 @@ defmodule Neurow.JwtAuthPlugTest do
     end
   end
 
-  defp error_code(response) do
-    {:ok, json_body} = Jason.decode(response.resp_body)
-    json_body["errors"] |> Enum.at(0) |> Map.get("error_code")
-  end
-
   defp valid_issuer_1_jwt_payload() do
     iat = :os.system_time(:second)
     exp = iat + (2 * 60 - 1)
@@ -481,18 +478,8 @@ defmodule Neurow.JwtAuthPlugTest do
     }
   end
 
-  defp signed_jwt_token(jwt, jwk) do
-    jws = %{
-      "alg" => "HS256"
-    }
-
-    signed = JOSE.JWT.sign(jwk, jws, jwt)
-    {%{alg: :jose_jws_alg_hmac}, compact_signed} = JOSE.JWS.compact(signed)
-    compact_signed
-  end
-
-  defp put_jwt_token_in_req_header(conn, jwt, jwk) do
-    jwt_token = signed_jwt_token(jwt, jwk)
-    conn |> put_req_header("authorization", "Bearer #{jwt_token}")
+  defp error_code(response) do
+    {:ok, json_body} = Jason.decode(response.resp_body)
+    json_body["errors"] |> Enum.at(0) |> Map.get("error_code")
   end
 end
