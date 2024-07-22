@@ -66,12 +66,12 @@ defmodule Neurow.HistoryIntegrationTest do
   end
 
   defp all_messages(timeout \\ 100) do
-  try do
-    {:stream, msg} = next_message(timeout)
-    msg <> all_messages(timeout)
-  rescue
-    RuntimeError -> ""
-  end
+    try do
+      {:stream, msg} = next_message(timeout)
+      msg <> all_messages(timeout)
+    rescue
+      RuntimeError -> ""
+    end
   end
 
   defp subscribe(topic, headers \\ []) do
@@ -105,9 +105,9 @@ defmodule Neurow.HistoryIntegrationTest do
     end
 
     :ok = :httpc.cancel_request(request_id)
-end
+  end
 
-test "no history with headers" do
+  test "no history with headers" do
     request_id = subscribe("bar", [{["Last-Event-ID"], "3"}])
 
     assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
@@ -171,18 +171,21 @@ test "no history with headers" do
   end
 
   test "last-event-id multiple" do
-    ids = Enum.map((0..100), fn (chunk) ->
-      id = publish_message("message #{chunk}", "bar")
-      Process.sleep(2)
-      id
-    end)
+    ids =
+      Enum.map(0..100, fn chunk ->
+        id = publish_message("message #{chunk}", "bar")
+        Process.sleep(2)
+        id
+      end)
+
     start = 11
     request_id = subscribe("bar", [{["Last-Event-ID"], Enum.at(ids, start)}])
     output = all_messages()
 
-    expected = Enum.reduce_while((12..100), "", fn (chunk, acc) ->
-      {:cont, acc <> "id: #{Enum.at(ids, chunk)}\ndata: message #{chunk}\n\n"}
-    end)
+    expected =
+      Enum.reduce_while(12..100, "", fn chunk, acc ->
+        {:cont, acc <> "id: #{Enum.at(ids, chunk)}\ndata: message #{chunk}\n\n"}
+      end)
 
     assert output == expected
     :ok = :httpc.cancel_request(request_id)
