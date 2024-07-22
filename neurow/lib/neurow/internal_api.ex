@@ -53,10 +53,11 @@ defmodule Neurow.InternalApi do
 
   get "/history/:topic" do
     history = GenServer.call(Neurow.TopicManager, {:get_history, topic})
+    history = Enum.map(history, fn {_, {id, message}} -> %{id: id, message: message} end)
 
     conn
-    |> put_resp_header("content-type", "text/plain")
-    |> send_resp(200, inspect(history))
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(history))
   end
 
   post "/v1/publish" do
