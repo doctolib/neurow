@@ -35,9 +35,9 @@ defmodule Neurow.TopicManager do
   end
 
   @impl true
-  def handle_call({:purge}, _, {shards, registry}) do
+  def handle_call({:rotate}, _, {shards, registry}) do
     result =
-      Enum.map(Map.values(registry), fn {receiver, _} -> GenServer.call(receiver, {:purge}) end)
+      Enum.map(Map.values(registry), fn {receiver, _} -> GenServer.call(receiver, {:rotate}) end)
 
     {:reply, result, {shards, registry}}
   end

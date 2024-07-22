@@ -4,7 +4,8 @@ defmodule Neurow.HistoryIntegrationTest do
   import JwtHelper
 
   setup do
-    GenServer.call(Neurow.TopicManager, {:purge})
+    GenServer.call(Neurow.TopicManager, {:rotate})
+    GenServer.call(Neurow.TopicManager, {:rotate})
     :ok
   end
 
@@ -95,6 +96,12 @@ defmodule Neurow.HistoryIntegrationTest do
 
   defp assert_headers(headers, {key, value}) do
     assert {to_charlist(key), to_charlist(value)} in headers
+  end
+
+  defp assert_history(topic, expected_history) do
+    actual_history = history(topic)
+    assert length(expected_history) == length(actual_history)
+    Enum.each((0..length(expected_history) - 1), fn index -> assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["message"] end)
   end
 
   test "simple history" do
@@ -207,5 +214,21 @@ defmodule Neurow.HistoryIntegrationTest do
 
     assert output == expected
     :ok = :httpc.cancel_request(request_id)
+  end
+
+  test "rotate" do
+    assert_history("test_issuer1-bar", [])
+    publish_message("message 1", "bar")
+    assert_history("test_issuer1-bar", ["message 1"])
+    publish_message("message 2", "bar")
+    assert_history("test_issuer1-bar", ["message 1", "message 2"])
+    GenServer.call(Neurow.TopicManager, {:rotate})
+    assert_history("test_issuer1-bar", ["message 1", "message 2"])
+    publish_message("message 3", "bar")
+    assert_history("test_issuer1-bar", ["message 1", "message 2", "message 3"])
+    GenServer.call(Neurow.TopicManager, {:rotate})
+    assert_history("test_issuer1-bar", ["message 3"])
+    GenServer.call(Neurow.TopicManager, {:rotate})
+    assert_history("test_issuer1-bar", [])
   end
 end
