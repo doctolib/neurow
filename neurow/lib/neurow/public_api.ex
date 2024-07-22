@@ -11,7 +11,7 @@ defmodule Neurow.PublicApi do
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
-    count_error: &Stats.inc_jwt_errors_public/0
+    inc_error_callback: &Stats.inc_jwt_errors_public/0
   )
 
   plug(:match)

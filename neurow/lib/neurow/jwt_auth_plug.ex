@@ -57,7 +57,6 @@ defmodule Neurow.JwtAuthPlug do
           conn |> assign(:jwt_payload, payload.fields)
         else
           {:error, code, message} ->
-
             options.inc_error_callback.()
             conn |> forbidden(code, message, options)
 
