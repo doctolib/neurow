@@ -26,6 +26,11 @@ defmodule Neurow.TopicManager do
     end
   end
 
+  @impl true
+  def handle_call({:all_receivers}, _, registry) do
+    {:reply, Map.keys(registry), registry}
+  end
+
   def build_topic(hash) do
     "__topic#{hash}"
   end

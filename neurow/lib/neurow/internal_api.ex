@@ -80,7 +80,7 @@ defmodule Neurow.InternalApi do
 
         conn
         |> put_resp_header("content-type", "text/html")
-        |> send_resp(200, "Published #{message} to #{topic}\n")
+        |> send_resp(200, "Published #{message} to #{topic}, id=#{message_id}\n")
 
       {:error, reason} ->
         conn |> resp(:bad_request, reason)

@@ -15,7 +15,7 @@ defmodule Neurow.PublicApiIntegrationTest do
     :ok = Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, id, message})
   end
 
-  def next_message(timeout \\ 100) do
+  defp next_message(timeout \\ 100) do
     receive do
       {:http, {_, {:error, msg}}} ->
         raise("Http error: #{inspect(msg)}")

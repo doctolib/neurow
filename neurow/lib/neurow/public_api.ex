@@ -48,6 +48,22 @@ defmodule Neurow.PublicApi do
 
         conn = send_chunked(conn, 200)
 
+        conn =
+          case conn.req_headers |> List.keyfind("last-event-id", 0) do
+            nil ->
+              conn
+
+            {"last-event-id", last_event_id} ->
+              {last_event_id, ""} = Integer.parse(last_event_id)
+              {conn, sent} = import_history(conn, topic, last_event_id)
+
+              Logger.debug(fn ->
+                "Imported history for #{topic}, last_event_id: #{last_event_id}, imported size: #{sent}"
+              end)
+
+              conn
+          end
+
         Logger.debug("Client subscribed to #{topic}")
 
         last_message = :os.system_time(:millisecond)
@@ -58,6 +74,45 @@ defmodule Neurow.PublicApi do
       _ ->
         conn |> resp(:bad_request, "Expected JWT claims are missing")
     end
+  end
+
+  defp import_history(conn, topic, last_event_id) do
+    broadcast_topic = Neurow.TopicManager.hash_topic(topic, 3)
+    receiver = GenServer.call(Neurow.TopicManager, {:lookup_receiver, broadcast_topic})
+    history = GenServer.call(receiver, {:get_history, topic})
+
+    process_history(conn, last_event_id, false, 0, history)
+  end
+
+  defp process_history(conn, last_event_id, send, sent, [first | rest]) do
+    {_, {msg_id, msg}} = first
+    # Process.sleep(20)
+    # IO.inspect({msg_id, msg})
+
+    new_send =
+      cond do
+        send == true ->
+          true
+
+        msg_id == last_event_id ->
+          # Workaround: avoid to loose messages in tests
+          Process.sleep(1)
+          true
+
+        true ->
+          false
+      end
+
+    if send do
+      {:ok, conn} = chunk(conn, "id: #{msg_id}\ndata: #{msg}\n\n")
+      process_history(conn, last_event_id, new_send, sent + 1, rest)
+    else
+      process_history(conn, last_event_id, new_send, sent, rest)
+    end
+  end
+
+  defp process_history(conn, _, _, sent, []) do
+    {conn, sent}
   end
 
   defp loop(conn, sse_timeout, keep_alive, last_message, last_ping) do
