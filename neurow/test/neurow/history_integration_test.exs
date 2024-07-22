@@ -28,7 +28,8 @@ defmodule Neurow.HistoryIntegrationTest do
     conn = conn(:get, "/history/#{topic}")
     call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
-    call.resp_body
+    {:ok, body} = Jason.decode(call.resp_body)
+    body
   end
 
   defp drop_one_message() do
@@ -93,12 +94,13 @@ defmodule Neurow.HistoryIntegrationTest do
 
   test "simple history" do
     full_history = history("test_issuer1-bar")
-    assert full_history == "[]"
+    assert full_history == []
 
     publish_message("foo56", "bar")
 
     full_history = history("test_issuer1-bar")
-    assert String.contains?(full_history, "foo56")
+    assert length(full_history) == 1
+    assert Enum.at(full_history, 0)["message"] == "foo56"
   end
 
   test "no history no headers" do
@@ -126,6 +128,13 @@ defmodule Neurow.HistoryIntegrationTest do
     Process.sleep(2)
     second_id = publish_message("foo57", "bar")
     Process.sleep(2)
+
+    full_history = history("test_issuer1-bar")
+    assert length(full_history) == 2
+    assert Enum.at(full_history, 0)["message"] == "foo56"
+    assert Enum.at(full_history, 1)["message"] == "foo57"
+    drop_one_message()
+    drop_one_message()
 
     request_id = subscribe("bar")
 
