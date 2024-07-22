@@ -35,7 +35,7 @@ defmodule LoadTest.User.Publisher do
     }
 
     Logger.info(fn ->
-      "publisher_#{state.user_name}: Start publishing #{length(messages)} messages to #{state.publish_url}"
+      "publisher_#{state.user_name}: Start publishing #{length(messages)} messages to #{state.publish_url}, topic #{topic}"
     end)
 
     run(state, messages)
