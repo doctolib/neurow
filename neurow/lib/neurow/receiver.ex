@@ -23,7 +23,11 @@ defmodule Neurow.Receiver do
   @impl true
   def handle_info({:pubsub_message, user_topic, message_id, message}, {table_0, table_1}) do
     :ok =
-      Phoenix.PubSub.local_broadcast(Neurow.PubSub, user_topic, {:pubsub_message, message_id, message})
+      Phoenix.PubSub.local_broadcast(
+        Neurow.PubSub,
+        user_topic,
+        {:pubsub_message, message_id, message}
+      )
 
     true = :ets.insert(table_1, {String.to_atom(user_topic), {message_id, message}})
     {:noreply, {table_0, table_1}}
@@ -31,8 +35,10 @@ defmodule Neurow.Receiver do
 
   @impl true
   def handle_call({:get_history, user_topic}, _, {table_0, table_1}) do
-    result = :ets.lookup(table_0, String.to_atom(user_topic)) ++
-    :ets.lookup(table_1, String.to_atom(user_topic))
+    result =
+      :ets.lookup(table_0, String.to_atom(user_topic)) ++
+        :ets.lookup(table_1, String.to_atom(user_topic))
+
     {:reply, result, {table_0, table_1}}
   end
 

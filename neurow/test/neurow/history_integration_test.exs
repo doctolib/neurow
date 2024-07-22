@@ -101,7 +101,10 @@ defmodule Neurow.HistoryIntegrationTest do
   defp assert_history(topic, expected_history) do
     actual_history = history(topic)
     assert length(expected_history) == length(actual_history)
-    Enum.each((0..length(expected_history) - 1), fn index -> assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["message"] end)
+
+    Enum.each(0..(length(expected_history) - 1), fn index ->
+      assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["message"]
+    end)
   end
 
   test "simple history" do
