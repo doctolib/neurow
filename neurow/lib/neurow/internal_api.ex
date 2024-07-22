@@ -51,6 +51,89 @@ defmodule Neurow.InternalApi do
     |> send_resp((cluster_size >= size && 200) || 404, "Cluster size: #{cluster_size}\n")
   end
 
+  @publish_request_v1_json_schema %{
+                                    "$id" =>
+                                      "http://neurow.com/internal_api/v1/publish_request.schema.json",
+                                    "title" => "PublishRequest",
+                                    "type" => "object",
+                                    "oneOf" => [
+                                      %{
+                                        "required" => ["topic", "message"],
+                                        "properties" => %{
+                                          "topic" => %{
+                                            "type" => "string"
+                                          },
+                                          "message" => %{
+                                            "$ref" => "#/$defs/Message"
+                                          }
+                                        }
+                                      },
+                                      %{
+                                        "required" => ["topics", "message"],
+                                        "properties" => %{
+                                          "topics" => %{
+                                            "type" => "array",
+                                            "items" => %{
+                                              "type" => "string"
+                                            }
+                                          },
+                                          "message" => %{
+                                            "$ref" => "#/$defs/Message"
+                                          }
+                                        }
+                                      },
+                                      %{
+                                        "required" => ["topic", "messages"],
+                                        "properties" => %{
+                                          "topic" => %{
+                                            "type" => "string"
+                                          },
+                                          "messages" => %{
+                                            "type" => "array",
+                                            "items" => %{
+                                              "$ref" => "#/$defs/Message"
+                                            }
+                                          }
+                                        }
+                                      },
+                                      %{
+                                        "required" => ["topics", "messages"],
+                                        "properties" => %{
+                                          "topics" => %{
+                                            "type" => "array",
+                                            "items" => %{
+                                              "type" => "string"
+                                            }
+                                          },
+                                          "messages" => %{
+                                            "type" => "array",
+                                            "items" => %{
+                                              "$ref" => "#/$defs/Message"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "$defs" => %{
+                                      "Message" => %{
+                                        "type" => "object",
+                                        "required" => ["type", "payload"],
+                                        "properties" => %{
+                                          "type" => %{
+                                            "type" => "string"
+                                          },
+                                          "timestamp" => %{
+                                            "type" => "integer"
+                                          },
+                                          "payload" => %{
+                                            "type" => "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  |> ExJsonSchema.Schema.resolve()
+
   post "/v1/publish" do
     case extract_params(conn) do
       {:ok, message, topic} ->
@@ -78,6 +161,7 @@ defmodule Neurow.InternalApi do
   defp extract_params(conn) do
     with(
       {:ok, issuer} <- extract_issuer(conn),
+      {:ok} <- valid_payload(conn),
       {:ok, message} <- extract_param(conn, "message"),
       {:ok, topic} <- extract_param(conn, "topic")
     ) do
@@ -89,11 +173,15 @@ defmodule Neurow.InternalApi do
   end
 
   defp extract_issuer(conn) do
-    case conn.assigns[:jwt_payload]["iss"] do
+    case conn.v[:jwt_payload]["iss"] do
       nil -> {:error, "JWT iss is nil"}
       "" -> {:error, "JWT iss is empty"}
       issuer -> {:ok, issuer}
     end
+  end
+
+  defp valid_payload(conn) do
+    ExJsonSchema.Validator.validate(@publish_request_v1_json_schema, conn.body_params)
   end
 
   defp extract_param(conn, key) do
