@@ -15,7 +15,7 @@ config :neurow,
 
 config :neurow,
   internal_api_jwt_max_lifetime:
-    String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "120")
+    String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "1500")
 
 config :neurow, sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000")
 config :neurow, sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000")
