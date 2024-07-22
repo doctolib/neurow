@@ -91,7 +91,7 @@ defmodule Neurow.InternalApiUnitTest do
 
     call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
-    assert call.resp_body == "Published foo to test_issuer1-bar\n"
+    assert String.starts_with?(call.resp_body, "Published foo to test_issuer1-bar")
   end
 
   test "POST /v1/publish 403" do

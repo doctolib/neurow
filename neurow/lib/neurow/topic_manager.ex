@@ -7,35 +7,46 @@ defmodule Neurow.TopicManager do
   end
 
   @impl true
-  def init(_) do
-    {:ok, %{}}
+  def init([shards]) do
+    {:ok, {shards, %{}}}
   end
 
   @impl true
-  def handle_call({:register_topic, topic}, from, registry) do
+  def handle_call({:register_topic, topic}, from, {shards, registry}) do
     new_registry = Map.put(registry, topic, from)
-    {:reply, :ok, new_registry}
+    {:reply, :ok, {shards, new_registry}}
   end
 
   @impl true
-  def handle_call({:lookup_receiver, topic}, _, registry) do
-    Map.get(registry, topic)
+  def handle_call({:get_history, topic}, _, {shards, registry}) do
+    Map.get(registry, hash_topic(topic, shards))
     |> case do
-      nil -> {:reply, :error, registry}
-      {receiver, _} -> {:reply, receiver, registry}
+      nil ->
+        {:reply, :error, {shards, registry}}
+
+      {receiver, _} ->
+        {:reply, GenServer.call(receiver, {:get_history, topic}), {shards, registry}}
     end
   end
 
   @impl true
-  def handle_call({:all_receivers}, _, registry) do
-    {:reply, Map.keys(registry), registry}
+  def handle_call({:hash_topic, topic}, _, {shards, registry}) do
+    {:reply, hash_topic(topic, shards), {shards, registry}}
+  end
+
+  @impl true
+  def handle_call({:purge}, _, {shards, registry}) do
+    result =
+      Enum.map(Map.values(registry), fn {receiver, _} -> GenServer.call(receiver, {:purge}) end)
+
+    {:reply, result, {shards, registry}}
   end
 
   def build_topic(hash) do
     "__topic#{hash}"
   end
 
-  def hash_topic(topic, max) do
-    build_topic(:erlang.phash2(topic, max))
+  defp hash_topic(topic, shards) do
+    build_topic(:erlang.phash2(topic, shards))
   end
 end

@@ -52,9 +52,7 @@ defmodule Neurow.InternalApi do
   end
 
   get "/history/:topic" do
-    broadcast_topic = Neurow.TopicManager.hash_topic(topic, 3)
-    receiver = GenServer.call(Neurow.TopicManager, {:lookup_receiver, broadcast_topic})
-    history = GenServer.call(receiver, {:get_history, topic})
+    history = GenServer.call(Neurow.TopicManager, {:get_history, topic})
 
     conn
     |> put_resp_header("content-type", "text/plain")
@@ -66,7 +64,7 @@ defmodule Neurow.InternalApi do
       {:ok, message, topic} ->
         message_id = :os.system_time(:millisecond)
 
-        broadcast_topic = Neurow.TopicManager.hash_topic(topic, 3)
+        broadcast_topic = GenServer.call(Neurow.TopicManager, {:hash_topic, topic})
 
         :ok =
           Phoenix.PubSub.broadcast!(

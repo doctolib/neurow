@@ -77,17 +77,13 @@ defmodule Neurow.PublicApi do
   end
 
   defp import_history(conn, topic, last_event_id) do
-    broadcast_topic = Neurow.TopicManager.hash_topic(topic, 3)
-    receiver = GenServer.call(Neurow.TopicManager, {:lookup_receiver, broadcast_topic})
-    history = GenServer.call(receiver, {:get_history, topic})
+    history = GenServer.call(Neurow.TopicManager, {:get_history, topic})
 
     process_history(conn, last_event_id, false, 0, history)
   end
 
   defp process_history(conn, last_event_id, send, sent, [first | rest]) do
     {_, {msg_id, msg}} = first
-    # Process.sleep(20)
-    # IO.inspect({msg_id, msg})
 
     new_send =
       cond do

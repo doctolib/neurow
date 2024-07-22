@@ -1,5 +1,4 @@
 defmodule Neurow.Receiver do
-  require Logger
   use GenServer
 
   def start_link(topic) do
@@ -12,7 +11,6 @@ defmodule Neurow.Receiver do
 
   @impl true
   def init(topic) do
-    Logger.info("Subscribing to topic: #{topic}")
     :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
     table_name = String.to_atom("history_#{topic}")
     create_table(table_name)

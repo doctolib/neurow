@@ -4,13 +4,7 @@ defmodule Neurow.HistoryIntegrationTest do
   import JwtHelper
 
   setup do
-    receivers = GenServer.call(Neurow.TopicManager, {:all_receivers})
-
-    Enum.map(receivers, fn receiver ->
-      pid = GenServer.call(Neurow.TopicManager, {:lookup_receiver, receiver})
-      :ok = GenServer.call(pid, {:purge})
-    end)
-
+    GenServer.call(Neurow.TopicManager, {:purge})
     :ok
   end
 
@@ -97,6 +91,16 @@ defmodule Neurow.HistoryIntegrationTest do
     assert {to_charlist(key), to_charlist(value)} in headers
   end
 
+  test "simple history" do
+    full_history = history("test_issuer1-bar")
+    assert full_history == "[]"
+
+    publish_message("foo56", "bar")
+
+    full_history = history("test_issuer1-bar")
+    assert String.contains?(full_history, "foo56")
+  end
+
   test "no history no headers" do
     request_id = subscribe("bar")
 
@@ -115,16 +119,6 @@ defmodule Neurow.HistoryIntegrationTest do
     end
 
     :ok = :httpc.cancel_request(request_id)
-  end
-
-  test "simple history" do
-    full_history = history("test_issuer1-bar")
-    assert full_history == "[]"
-
-    publish_message("foo56", "bar")
-
-    full_history = history("test_issuer1-bar")
-    assert String.contains?(full_history, "foo56")
   end
 
   test "last-event-id" do
