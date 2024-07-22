@@ -69,7 +69,7 @@ defmodule Neurow.HistoryIntegrationTest do
     end
   end
 
-  defp subscribe(topic, headers \\ []) do
+  defp send_subscribe(topic, headers) do
     url = "http://localhost:4000/v1/subscribe"
 
     headers =
@@ -81,7 +81,12 @@ defmodule Neurow.HistoryIntegrationTest do
     {:ok, request_id} =
       :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
 
-    {:start, headers} = next_message()
+    request_id
+  end
+
+  defp subscribe(topic, headers \\ [], timeout \\ 100) do
+    request_id = send_subscribe(topic, headers)
+    {:start, headers} = next_message(timeout)
     assert_headers(headers, {"content-type", "text/event-stream"})
     assert_headers(headers, {"cache-control", "no-cache"})
     assert_headers(headers, {"connection", "close"})
@@ -118,6 +123,17 @@ defmodule Neurow.HistoryIntegrationTest do
 
     assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
       next_message()
+    end
+
+    :ok = :httpc.cancel_request(request_id)
+  end
+
+  test "last event id is a string" do
+    request_id = send_subscribe("bar", [{["Last-Event-ID"], "xxx"}])
+
+    receive do
+      {:http, {_, {{_, 400, _}, _, "Wrong value for last-event-id"}}} -> :ok
+      msg -> raise("Unexpected message: #{msg}")
     end
 
     :ok = :httpc.cancel_request(request_id)
@@ -165,10 +181,9 @@ defmodule Neurow.HistoryIntegrationTest do
 
     # Unknown id
     request_id = subscribe("bar", [{["Last-Event-ID"], "12"}])
+    output = all_messages()
 
-    assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
-      next_message()
-    end
+    assert output == "id: #{first_id}\ndata: foo56\n\nid: #{second_id}\ndata: foo57\n\n"
 
     :ok = :httpc.cancel_request(request_id)
   end
