@@ -42,8 +42,6 @@ defmodule Neurow.Application do
         {:http, base_public_api_http_config}
       end
 
-    shards = 8
-
     children = [
       Neurow.Configuration,
       {Phoenix.PubSub,
@@ -53,14 +51,14 @@ defmodule Neurow.Application do
        scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
       {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
       {StopListener, []},
-      {Neurow.TopicManager, [shards]}
+      {Neurow.TopicManager, []}
     ]
 
     children =
       children ++
-        Enum.map(0..(shards - 1), fn shard ->
-          Supervisor.child_spec({Neurow.Receiver, Neurow.TopicManager.build_topic(shard)},
-            id: String.to_atom("receiver_#{shard}")
+        Enum.map(0..(Neurow.TopicManager.shards() - 1), fn shard ->
+          Supervisor.child_spec({Neurow.Receiver, shard},
+            id: Neurow.Receiver.build_name(shard)
           )
         end)
 

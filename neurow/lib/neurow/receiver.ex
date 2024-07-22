@@ -1,8 +1,12 @@
 defmodule Neurow.Receiver do
   use GenServer
 
-  def start_link(topic) do
-    GenServer.start_link(__MODULE__, topic)
+  def start_link(shard) do
+    GenServer.start_link(__MODULE__, shard, name: build_name(shard))
+  end
+
+  def build_name(shard) do
+    String.to_atom("receiver_#{shard}")
   end
 
   defp create_table(table_name) do
@@ -10,14 +14,24 @@ defmodule Neurow.Receiver do
   end
 
   @impl true
-  def init(topic) do
-    :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
-    table_0 = String.to_atom("history_#{topic}_0")
-    table_1 = String.to_atom("history_#{topic}_1")
+  def init(shard) do
+    :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, Neurow.TopicManager.build_topic(shard))
+    table_0 = String.to_atom("history_#{shard}_0")
+    table_1 = String.to_atom("history_#{shard}_1")
     create_table(table_0)
     create_table(table_1)
-    GenServer.call(Neurow.TopicManager, {:register_topic, topic})
     {:ok, {table_0, table_1}}
+  end
+
+  def get_history(shard, topic) do
+    table_0 = String.to_atom("history_#{shard}_0")
+    table_1 = String.to_atom("history_#{shard}_1")
+
+    result =
+      :ets.lookup(table_0, String.to_atom(topic)) ++
+        :ets.lookup(table_1, String.to_atom(topic))
+
+    Enum.sort(result, fn {_, {id_0, _}}, {_, {id_1, _}} -> id_0 < id_1 end)
   end
 
   @impl true
@@ -31,15 +45,6 @@ defmodule Neurow.Receiver do
 
     true = :ets.insert(table_1, {String.to_atom(user_topic), {message_id, message}})
     {:noreply, {table_0, table_1}}
-  end
-
-  @impl true
-  def handle_call({:get_history, user_topic}, _, {table_0, table_1}) do
-    result =
-      :ets.lookup(table_0, String.to_atom(user_topic)) ++
-        :ets.lookup(table_1, String.to_atom(user_topic))
-
-    {:reply, result, {table_0, table_1}}
   end
 
   @impl true

@@ -2,51 +2,46 @@ defmodule Neurow.TopicManager do
   require Logger
   use GenServer
 
+  @shards 8
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @impl true
-  def init([shards]) do
-    {:ok, {shards, %{}}}
+  def init(_) do
+    pids =
+      Enum.map(0..(@shards - 1), fn shard -> Neurow.Receiver.build_name(shard) end)
+
+    {:ok, pids}
   end
 
   @impl true
-  def handle_call({:register_topic, topic}, from, {shards, registry}) do
-    new_registry = Map.put(registry, topic, from)
-    {:reply, :ok, {shards, new_registry}}
+  def handle_call({:rotate}, _, pids) do
+    Enum.each(pids, fn pid ->
+      GenServer.call(pid, {:rotate})
+    end)
+
+    {:reply, :ok, pids}
   end
 
-  @impl true
-  def handle_call({:get_history, topic}, _, {shards, registry}) do
-    Map.get(registry, hash_topic(topic, shards))
-    |> case do
-      nil ->
-        {:reply, :error, {shards, registry}}
-
-      {receiver, _} ->
-        {:reply, GenServer.call(receiver, {:get_history, topic}), {shards, registry}}
-    end
+  def build_topic(shard) do
+    "__topic#{shard}"
   end
 
-  @impl true
-  def handle_call({:hash_topic, topic}, _, {shards, registry}) do
-    {:reply, hash_topic(topic, shards), {shards, registry}}
+  def broadcast_topic(topic) do
+    build_topic(shard_from_topic(topic))
   end
 
-  @impl true
-  def handle_call({:rotate}, _, {shards, registry}) do
-    result =
-      Enum.map(Map.values(registry), fn {receiver, _} -> GenServer.call(receiver, {:rotate}) end)
-
-    {:reply, result, {shards, registry}}
+  def shard_from_topic(topic) do
+    :erlang.phash2(topic, @shards)
   end
 
-  def build_topic(hash) do
-    "__topic#{hash}"
+  def get_history(topic) do
+    Neurow.Receiver.get_history(shard_from_topic(topic), topic)
   end
 
-  defp hash_topic(topic, shards) do
-    build_topic(:erlang.phash2(topic, shards))
+  def shards() do
+    @shards
   end
 end
