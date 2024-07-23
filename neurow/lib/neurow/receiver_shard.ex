@@ -1,4 +1,4 @@
-defmodule Neurow.Receiver do
+defmodule Neurow.ReceiverShard do
   use GenServer
 
   def start_link(shard) do
@@ -19,7 +19,7 @@ defmodule Neurow.Receiver do
 
   @impl true
   def init(shard) do
-    :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, Neurow.TopicManager.build_topic(shard))
+    :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, Neurow.ReceiverShardManager.build_topic(shard))
     table_0 = table_name(shard, 0)
     table_1 = table_name(shard, 1)
     create_table(table_0)

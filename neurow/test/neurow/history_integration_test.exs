@@ -4,8 +4,8 @@ defmodule Neurow.HistoryIntegrationTest do
   import JwtHelper
 
   setup do
-    GenServer.call(Neurow.TopicManager, {:rotate})
-    GenServer.call(Neurow.TopicManager, {:rotate})
+    GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     :ok
   end
 
@@ -218,13 +218,13 @@ defmodule Neurow.HistoryIntegrationTest do
     assert_history("test_issuer1-bar", ["message 1"])
     publish_message("message 2", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
-    GenServer.call(Neurow.TopicManager, {:rotate})
+    GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     publish_message("message 3", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2", "message 3"])
-    GenServer.call(Neurow.TopicManager, {:rotate})
+    GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     assert_history("test_issuer1-bar", ["message 3"])
-    GenServer.call(Neurow.TopicManager, {:rotate})
+    GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     assert_history("test_issuer1-bar", [])
   end
 end

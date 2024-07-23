@@ -87,7 +87,7 @@ defmodule Neurow.PublicApi do
   end
 
   defp import_history(conn, topic, last_event_id) do
-    history = Neurow.TopicManager.get_history(topic)
+    history = Neurow.ReceiverShardManager.get_history(topic)
 
     {conn, sent} = process_history(conn, last_event_id, 0, history)
 

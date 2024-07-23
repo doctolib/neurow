@@ -17,6 +17,8 @@ defmodule Neurow.Application do
     {:ok, ssl_keyfile} = Application.fetch_env(:neurow, :ssl_keyfile)
     {:ok, ssl_certfile} = Application.fetch_env(:neurow, :ssl_certfile)
 
+    {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
+
     base_public_api_http_config = [
       port: public_api_port,
       protocol_options: [idle_timeout: :infinity],
@@ -53,8 +55,8 @@ defmodule Neurow.Application do
          scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
         {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
         {StopListener, []},
-        {Neurow.TopicManager, []}
-      ] ++ Neurow.TopicManager.create_receivers()
+        {Neurow.ReceiverShardManager, [history_min_duration]}
+      ] ++ Neurow.ReceiverShardManager.create_receivers()
 
     MetricsPlugExporter.setup()
     Stats.setup()

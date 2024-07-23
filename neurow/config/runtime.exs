@@ -23,6 +23,9 @@ config :neurow, sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE")
 config :neurow, ssl_keyfile: System.get_env("SSL_KEYFILE")
 config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
 
+config :neurow,
+  history_min_duration: String.to_integer(System.get_env("HISTORY_MIN_DURATION") || "30")
+
 case config_env() do
   :prod ->
     {:ok, interservice_json_config} =
