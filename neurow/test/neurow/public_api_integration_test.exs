@@ -12,7 +12,12 @@ defmodule Neurow.PublicApiIntegrationTest do
   end
 
   defp publish(topic, id, message) do
-    :ok = Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, id, message})
+    :ok =
+      Phoenix.PubSub.broadcast!(
+        Neurow.PubSub,
+        topic,
+        {:pubsub_message, %Neurow.InternalApi.Message{timestamp: id, payload: message}}
+      )
   end
 
   def next_message(timeout \\ 100) do
@@ -96,9 +101,9 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert_headers(headers, {"cache-control", "no-cache"})
     assert_headers(headers, {"connection", "close"})
 
-    publish("test_issuer1-foo57", "42", "hello")
+    publish("test_issuer1-foo57", 42, "hello")
     Process.sleep(10)
-    publish("test_issuer1-foo57", "43", "hello2")
+    publish("test_issuer1-foo57", 43, "hello2")
 
     {:stream, msg} = next_message()
     assert msg == "id: 42\ndata: hello\n\n"
@@ -123,7 +128,7 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert_headers(headers, {"cache-control", "no-cache"})
     assert_headers(headers, {"connection", "close"})
 
-    publish("test_issuer1-foo57", "42", "hello")
+    publish("test_issuer1-foo57", 42, "hello")
     Process.sleep(1100)
 
     {:stream, msg} = next_message()
