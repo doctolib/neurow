@@ -13,19 +13,23 @@ defmodule Neurow.Receiver do
     :ets.new(table_name, [:duplicate_bag, :protected, :named_table])
   end
 
+  def table_name(shard, sub_shard) do
+    String.to_atom("history_#{shard}_#{sub_shard}")
+  end
+
   @impl true
   def init(shard) do
     :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, Neurow.TopicManager.build_topic(shard))
-    table_0 = String.to_atom("history_#{shard}_0")
-    table_1 = String.to_atom("history_#{shard}_1")
+    table_0 = table_name(shard, 0)
+    table_1 = table_name(shard, 1)
     create_table(table_0)
     create_table(table_1)
     {:ok, {table_0, table_1}}
   end
 
   def get_history(shard, topic) do
-    table_0 = String.to_atom("history_#{shard}_0")
-    table_1 = String.to_atom("history_#{shard}_1")
+    table_0 = table_name(shard, 0)
+    table_1 = table_name(shard, 1)
 
     result =
       :ets.lookup(table_0, String.to_atom(topic)) ++
