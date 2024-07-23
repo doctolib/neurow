@@ -65,15 +65,7 @@ defmodule Neurow.InternalApi do
       {:ok, message, topic} ->
         message_id = :os.system_time(:millisecond)
 
-        broadcast_topic =
-          Neurow.ReceiverShardManager.broadcast_topic(topic)
-
-        :ok =
-          Phoenix.PubSub.broadcast!(
-            Neurow.PubSub,
-            broadcast_topic,
-            {:pubsub_message, topic, message_id, message}
-          )
+        :ok = Neurow.ReceiverShardManager.broadcast(topic, message_id, message)
 
         Logger.debug("Message published on topic: #{topic}")
         Stats.inc_msg_received()

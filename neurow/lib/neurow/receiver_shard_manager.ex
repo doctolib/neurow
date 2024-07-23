@@ -55,14 +55,6 @@ defmodule Neurow.ReceiverShardManager do
     "__topic#{shard}"
   end
 
-  def broadcast_topic(topic) do
-    build_topic(shard_from_topic(topic))
-  end
-
-  def shard_from_topic(topic) do
-    :erlang.phash2(topic, @shards)
-  end
-
   # Read from the current process, not from GenServer process
   def get_history(topic) do
     Neurow.ReceiverShard.get_history(shard_from_topic(topic), topic)
@@ -72,5 +64,23 @@ defmodule Neurow.ReceiverShardManager do
     all_pids(fn {shard, pid} ->
       Supervisor.child_spec({Neurow.ReceiverShard, shard}, id: pid)
     end)
+  end
+
+  def broadcast(topic, message_id, message) do
+    broadcast_topic = broadcast_topic(topic)
+
+    Phoenix.PubSub.broadcast!(
+      Neurow.PubSub,
+      broadcast_topic,
+      {:pubsub_message, topic, message_id, message}
+    )
+  end
+
+  defp broadcast_topic(topic) do
+    build_topic(shard_from_topic(topic))
+  end
+
+  defp shard_from_topic(topic) do
+    :erlang.phash2(topic, @shards)
   end
 end
