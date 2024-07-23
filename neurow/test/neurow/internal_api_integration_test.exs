@@ -29,10 +29,10 @@ defmodule Neurow.InternalApiIntegrationTest do
     call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
 
-    assert_received {:pubsub_message, _,
+    assert_received {:pubsub_message,
                      %Neurow.InternalApi.Message{type: "type_foo", payload: "foo56"}}
 
-    assert_received {:pubsub_message, _,
+    assert_received {:pubsub_message,
                      %Neurow.InternalApi.Message{type: "type_foo", payload: "foo57"}}
   end
 end

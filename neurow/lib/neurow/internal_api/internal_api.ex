@@ -3,6 +3,7 @@ defmodule Neurow.InternalApi do
   require Node
   import Plug.Conn
   alias Neurow.InternalApi.PublishRequest
+  alias Neurow.InternalApi.Message
 
   use Plug.Router
   plug(MetricsPlugExporter)
@@ -56,7 +57,7 @@ defmodule Neurow.InternalApi do
   post "/v1/publish" do
     case extract_params(conn) do
       {:ok, messages, topics} ->
-        message_id = to_string(:os.system_time(:millisecond))
+        publish_timestamp = to_string(:os.system_time(:millisecond))
 
         nb_publish = length(messages) * length(topics)
 
@@ -65,7 +66,8 @@ defmodule Neurow.InternalApi do
             Phoenix.PubSub.broadcast!(
               Neurow.PubSub,
               topic,
-              {:pubsub_message, message_id, message}
+              {:pubsub_message,
+               %Message{message | timestamp: message.timestamp || publish_timestamp}}
             )
 
             Stats.inc_msg_received()
