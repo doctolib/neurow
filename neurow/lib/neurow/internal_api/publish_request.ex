@@ -43,7 +43,7 @@ defmodule Neurow.InternalApi.PublishRequest do
       :ok <- validate_topics(request),
       :ok <- validate_messages(request)
     ) do
-      {:ok, request}
+      :ok
     else
       error -> error
     end

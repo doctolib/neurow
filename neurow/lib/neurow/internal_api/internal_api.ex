@@ -58,6 +58,8 @@ defmodule Neurow.InternalApi do
       {:ok, messages, topics} ->
         message_id = to_string(:os.system_time(:millisecond))
 
+        nb_publish = length(messages) * length(topics)
+
         Enum.each(topics, fn topic ->
           Enum.each(messages, fn message ->
             Phoenix.PubSub.broadcast!(
@@ -66,15 +68,14 @@ defmodule Neurow.InternalApi do
               {:pubsub_message, message_id, message}
             )
 
+            Stats.inc_msg_received()
             Logger.debug("Message published on topic: #{topic}")
           end)
         end)
 
-        Stats.inc_msg_received()
-
         conn
-        |> put_resp_header("content-type", "text/html")
-        |> send_resp(200, "Published\n")
+        |> put_resp_header("content-type", "text/plain")
+        |> send_resp(200, "#{nb_publish} messages published\n")
 
       {:error, reason} ->
         conn |> resp(:bad_request, reason)
@@ -88,7 +89,7 @@ defmodule Neurow.InternalApi do
   defp extract_params(conn) do
     with(
       {:ok, issuer} <- issuer(conn),
-      {:ok, publish_request} <- PublishRequest.from_json(conn.body_params),
+      publish_request <- PublishRequest.from_json(conn.body_params),
       :ok <- PublishRequest.validate(publish_request)
     ) do
       full_topics =
@@ -96,7 +97,8 @@ defmodule Neurow.InternalApi do
 
       {:ok, PublishRequest.messages(publish_request), full_topics}
     else
-      error -> error
+      error ->
+        error
     end
   end
 

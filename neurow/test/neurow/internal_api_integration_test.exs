@@ -8,7 +8,7 @@ defmodule Neurow.InternalApiIntegrationTest do
 
     {:ok, body} =
       Jason.encode(%{
-        message: %{"type" => "type_foo", "payload" => "foo56"},
+        message: %{type: "type_foo", payload: "foo56"},
         topic: "bar"
       })
 
@@ -20,7 +20,7 @@ defmodule Neurow.InternalApiIntegrationTest do
     assert call.status == 200
 
     {:ok, body} =
-      Jason.encode(%{"message" => %{"type" => "type_foo", "payload" => "foo57"}, topic: "bar"})
+      Jason.encode(%{"message" => %{type: "type_foo", payload: "foo57"}, topic: "bar"})
 
     conn =
       conn(:post, "/v1/publish", body)
@@ -29,7 +29,10 @@ defmodule Neurow.InternalApiIntegrationTest do
     call = Neurow.InternalApi.call(conn, [])
     assert call.status == 200
 
-    assert_received {:pubsub_message, _, %{"type" => "type_foo", "payload" => "foo56"}}
-    assert_received {:pubsub_message, _, %{"type" => "type_foo", "payload" => "foo57"}}
+    assert_received {:pubsub_message, _,
+                     %Neurow.InternalApi.Message{type: "type_foo", payload: "foo56"}}
+
+    assert_received {:pubsub_message, _,
+                     %Neurow.InternalApi.Message{type: "type_foo", payload: "foo57"}}
   end
 end
