@@ -27,6 +27,7 @@ defmodule Neurow.Receiver do
     {:ok, {table_0, table_1}}
   end
 
+  # Read from the current process, not from GenServer process
   def get_history(shard, topic) do
     table_0 = table_name(shard, 0)
     table_1 = table_name(shard, 1)

@@ -42,25 +42,19 @@ defmodule Neurow.Application do
         {:http, base_public_api_http_config}
       end
 
-    children = [
-      Neurow.Configuration,
-      {Phoenix.PubSub,
-       name: Neurow.PubSub, options: [adapter: Phoenix.PubSub.PG2, pool_size: 10]},
-      {Plug.Cowboy, scheme: :http, plug: Neurow.InternalApi, options: [port: internal_api_port]},
-      {Plug.Cowboy,
-       scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
-      {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
-      {StopListener, []},
-      {Neurow.TopicManager, []}
-    ]
-
     children =
-      children ++
-        Enum.map(0..(Neurow.TopicManager.shards() - 1), fn shard ->
-          Supervisor.child_spec({Neurow.Receiver, shard},
-            id: Neurow.Receiver.build_name(shard)
-          )
-        end)
+      [
+        Neurow.Configuration,
+        {Phoenix.PubSub,
+         name: Neurow.PubSub, options: [adapter: Phoenix.PubSub.PG2, pool_size: 10]},
+        {Plug.Cowboy,
+         scheme: :http, plug: Neurow.InternalApi, options: [port: internal_api_port]},
+        {Plug.Cowboy,
+         scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
+        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
+        {StopListener, []},
+        {Neurow.TopicManager, []}
+      ] ++ Neurow.TopicManager.create_receivers()
 
     MetricsPlugExporter.setup()
     Stats.setup()

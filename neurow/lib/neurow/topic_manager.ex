@@ -9,20 +9,21 @@ defmodule Neurow.TopicManager do
   end
 
   @impl true
-  def init(_) do
-    pids =
-      Enum.map(0..(@shards - 1), fn shard -> Neurow.Receiver.build_name(shard) end)
+  def init(opts) do
+    {:ok, opts}
+  end
 
-    {:ok, pids}
+  def all_pids(fun) do
+    Enum.map(0..(@shards - 1), fn shard -> fun.({shard, Neurow.Receiver.build_name(shard)}) end)
   end
 
   @impl true
-  def handle_call({:rotate}, _, pids) do
-    Enum.each(pids, fn pid ->
+  def handle_call({:rotate}, _, opts) do
+    all_pids(fn {_, pid} ->
       GenServer.call(pid, {:rotate})
     end)
 
-    {:reply, :ok, pids}
+    {:reply, :ok, opts}
   end
 
   def build_topic(shard) do
@@ -37,11 +38,14 @@ defmodule Neurow.TopicManager do
     :erlang.phash2(topic, @shards)
   end
 
+  # Read from the current process, not from GenServer process
   def get_history(topic) do
     Neurow.Receiver.get_history(shard_from_topic(topic), topic)
   end
 
-  def shards() do
-    @shards
+  def create_receivers() do
+    all_pids(fn {shard, pid} ->
+      Supervisor.child_spec({Neurow.Receiver, shard}, id: pid)
+    end)
   end
 end
