@@ -1,4 +1,4 @@
-defmodule Neurow.InternalApi do
+defmodule Neurow.InternalApi.Endpoint do
   require Logger
   require Node
   import Plug.Conn
@@ -57,7 +57,7 @@ defmodule Neurow.InternalApi do
   post "/v1/publish" do
     case extract_params(conn) do
       {:ok, messages, topics} ->
-        publish_timestamp = to_string(:os.system_time(:millisecond))
+        publish_timestamp = :os.system_time(:millisecond)
 
         nb_publish = length(messages) * length(topics)
 
@@ -76,11 +76,11 @@ defmodule Neurow.InternalApi do
         end)
 
         conn
-        |> put_resp_header("content-type", "text/plain")
-        |> send_resp(200, "#{nb_publish} messages published\n")
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, "{\"nb_published\": #{nb_publish}}")
 
       {:error, reason} ->
-        conn |> resp(:bad_request, reason)
+        conn |> send_bad_request(:invalid_payload, reason)
     end
   end
 
@@ -110,5 +110,18 @@ defmodule Neurow.InternalApi do
       "" -> {:error, "JWT iss is empty"}
       issuer -> {:ok, issuer}
     end
+  end
+
+  defp send_bad_request(conn, error_code, error_message) do
+    {:ok, response} =
+      Jason.encode(%{
+        errors: [
+          %{error_code: error_code, error_message: error_message}
+        ]
+      })
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> resp(:bad_request, response)
   end
 end
