@@ -32,9 +32,7 @@ defmodule Neurow.ReceiverShard do
     table_0 = table_name(shard, 0)
     table_1 = table_name(shard, 1)
 
-    result =
-      :ets.lookup(table_0, String.to_atom(topic)) ++
-        :ets.lookup(table_1, String.to_atom(topic))
+    result = :ets.lookup(table_0, topic) ++ :ets.lookup(table_1, topic)
 
     Enum.sort(result, fn {_, {id_0, _}}, {_, {id_1, _}} -> id_0 < id_1 end)
   end
@@ -48,13 +46,13 @@ defmodule Neurow.ReceiverShard do
         {:pubsub_message, message_id, message}
       )
 
-    true = :ets.insert(table_1, {String.to_atom(user_topic), {message_id, message}})
+    true = :ets.insert(table_1, {user_topic, {message_id, message}})
     {:noreply, {table_0, table_1}}
   end
 
   @impl true
-  def handle_call({:rotate}, _, {table_0, table_1}) do
+  def handle_info({:rotate}, {table_0, table_1}) do
     :ets.delete_all_objects(table_0)
-    {:reply, :ok, {table_1, table_0}}
+    {:noreply, {table_1, table_0}}
   end
 end

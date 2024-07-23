@@ -41,7 +41,7 @@ defmodule Neurow.ReceiverShardManager do
     Stats.inc_history_rotate()
 
     all_pids(fn {_, pid} ->
-      GenServer.call(pid, {:rotate})
+      send(pid, {:rotate})
     end)
   end
 
