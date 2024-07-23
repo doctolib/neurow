@@ -8,8 +8,8 @@ defmodule Neurow.Application do
   @impl true
   @spec start(any(), any()) :: {:error, any()} | {:ok, pid()}
   def start(_type, _args) do
-    {:ok, public_api_port} = Application.fetch_env(:neurow, :public_api_port)
-    {:ok, internal_api_port} = Application.fetch_env(:neurow, :internal_api_port)
+    public_api_port = Application.fetch_env!(:neurow, :public_api_port)
+    internal_api_port = Application.fetch_env!(:neurow, :internal_api_port)
     Logger.warning("Current host #{node()}")
 
     Logger.warning("Starting internal API on port #{internal_api_port}")
