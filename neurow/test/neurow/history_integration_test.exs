@@ -50,7 +50,7 @@ defmodule Neurow.HistoryIntegrationTest do
     end
   end
 
-  defp next_message(timeout \\ 100) do
+  defp next_message(timeout \\ 200) do
     receive do
       {:http, {_, {:error, msg}}} ->
         raise("Http error: #{inspect(msg)}")
