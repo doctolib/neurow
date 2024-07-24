@@ -121,7 +121,7 @@ defmodule Neurow.PublicApi do
   defp loop(conn, sse_timeout, keep_alive, last_message, last_ping) do
     receive do
       {:pubsub_message, message} ->
-        {:ok, conn} = write_chunk(conn, message.timestamp, message.payload)
+        conn = write_chunk(conn, message.timestamp, message.payload)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message)
