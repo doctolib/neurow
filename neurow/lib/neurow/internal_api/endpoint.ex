@@ -59,11 +59,7 @@ defmodule Neurow.InternalApi.Endpoint do
 
     history =
       Enum.map(history, fn {_, message} ->
-        %{
-          timestamp: message.timestamp,
-          payload: message.payload,
-          type: message.type
-        }
+        Map.from_struct(message)
       end)
 
     conn
@@ -87,10 +83,11 @@ defmodule Neurow.InternalApi.Endpoint do
                 | timestamp: message.timestamp || publish_timestamp
               })
 
-            Stats.inc_msg_received()
             Logger.debug("Message published on topic: #{topic}")
           end)
         end)
+
+        Stats.inc_msg_received()
 
         conn
         |> put_resp_header("content-type", "application/json")
