@@ -1,5 +1,5 @@
 defmodule Neurow.JwtAuthPlugTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   use Plug.Test
   import JwtHelper
 

@@ -6,29 +6,39 @@ defmodule Neurow.HistoryIntegrationTest do
   setup do
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(20)
     :ok
   end
 
-  defp publish_message(message, topic) do
-    {:ok, body} = Jason.encode(%{message: message, topic: topic})
+  defp publish_message(payload, topic) do
+    {:ok, body} =
+      Jason.encode(%{
+        message: %{
+          event: "test-event",
+          payload: payload
+        },
+        topic: topic
+      })
 
     conn =
       conn(:post, "/v1/publish", body)
       |> put_jwt_token_in_req_header_internal_api()
 
-    call = Neurow.InternalApi.call(conn, [])
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
     assert call.status == 200
 
     drop_one_message()
     drop_one_message()
-    [[_, id]] = Regex.scan(~r/id=(\d+)/, call.resp_body)
+
+    # Avoid to publish message in the same millisecond
     Process.sleep(2)
-    id
+    result = Jason.decode!(call.resp_body)
+    result["publish_timestamp"]
   end
 
   defp history(topic) do
     conn = conn(:get, "/history/#{topic}")
-    call = Neurow.InternalApi.call(conn, [])
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
     assert call.status == 200
     {:ok, body} = Jason.decode(call.resp_body)
     body
@@ -104,7 +114,7 @@ defmodule Neurow.HistoryIntegrationTest do
     assert length(expected_history) == length(actual_history)
 
     Enum.each(0..(length(expected_history) - 1), fn index ->
-      assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["message"]
+      assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["payload"]
     end)
 
     drop_one_message()
@@ -165,9 +175,9 @@ defmodule Neurow.HistoryIntegrationTest do
 
     :ok = :httpc.cancel_request(request_id)
 
-    request_id = subscribe("bar", [{["Last-Event-ID"], first_id}])
+    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(first_id)}])
     {:stream, msg} = next_message()
-    assert msg == "id: #{second_id}\ndata: foo57\n\n"
+    assert msg == "id: #{second_id}\nevent: test-event\ndata: foo57\n\n"
 
     assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
       next_message()
@@ -176,7 +186,7 @@ defmodule Neurow.HistoryIntegrationTest do
     :ok = :httpc.cancel_request(request_id)
 
     # End of is history
-    request_id = subscribe("bar", [{["Last-Event-ID"], second_id}])
+    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(second_id)}])
 
     assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
       next_message()
@@ -188,7 +198,8 @@ defmodule Neurow.HistoryIntegrationTest do
     request_id = subscribe("bar", [{["Last-Event-ID"], "12"}])
     output = all_messages()
 
-    assert output == "id: #{first_id}\ndata: foo56\n\nid: #{second_id}\ndata: foo57\n\n"
+    assert output ==
+             "id: #{first_id}\nevent: test-event\ndata: foo56\n\nid: #{second_id}\nevent: test-event\ndata: foo57\n\n"
 
     :ok = :httpc.cancel_request(request_id)
   end
@@ -200,12 +211,13 @@ defmodule Neurow.HistoryIntegrationTest do
       end)
 
     start = 11
-    request_id = subscribe("bar", [{["Last-Event-ID"], Enum.at(ids, start)}])
+    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(Enum.at(ids, start))}])
     output = all_messages()
 
     expected =
       Enum.reduce_while(12..100, "", fn chunk, acc ->
-        {:cont, acc <> "id: #{Enum.at(ids, chunk)}\ndata: message #{chunk}\n\n"}
+        {:cont,
+         acc <> "id: #{Enum.at(ids, chunk)}\nevent: test-event\ndata: message #{chunk}\n\n"}
       end)
 
     assert output == expected
@@ -219,12 +231,15 @@ defmodule Neurow.HistoryIntegrationTest do
     publish_message("message 2", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(20)
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     publish_message("message 3", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2", "message 3"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(20)
     assert_history("test_issuer1-bar", ["message 3"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(20)
     assert_history("test_issuer1-bar", [])
   end
 end

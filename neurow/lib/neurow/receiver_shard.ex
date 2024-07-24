@@ -34,19 +34,21 @@ defmodule Neurow.ReceiverShard do
 
     result = :ets.lookup(table_0, topic) ++ :ets.lookup(table_1, topic)
 
-    Enum.sort(result, fn {_, {id_0, _}}, {_, {id_1, _}} -> id_0 < id_1 end)
+    Enum.sort(result, fn {_, message0}, {_, message1} ->
+      message0.timestamp < message1.timestamp
+    end)
   end
 
   @impl true
-  def handle_info({:pubsub_message, user_topic, message_id, message}, {table_0, table_1}) do
+  def handle_info({:pubsub_message, user_topic, message}, {table_0, table_1}) do
     :ok =
       Phoenix.PubSub.local_broadcast(
         Neurow.PubSub,
         user_topic,
-        {:pubsub_message, message_id, message}
+        {:pubsub_message, message}
       )
 
-    true = :ets.insert(table_1, {user_topic, {message_id, message}})
+    true = :ets.insert(table_1, {user_topic, message})
     {:noreply, {table_0, table_1}}
   end
 

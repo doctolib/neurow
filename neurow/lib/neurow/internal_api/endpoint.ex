@@ -1,7 +1,10 @@
-defmodule Neurow.InternalApi do
+defmodule Neurow.InternalApi.Endpoint do
   require Logger
   require Node
   import Plug.Conn
+  alias Neurow.InternalApi.PublishRequest
+  alias Neurow.InternalApi.Message
+
   use Plug.Router
   plug(MetricsPlugExporter)
 
@@ -53,7 +56,11 @@ defmodule Neurow.InternalApi do
 
   get "/history/:topic" do
     history = Neurow.ReceiverShardManager.get_history(topic)
-    history = Enum.map(history, fn {_, {id, message}} -> %{id: id, message: message} end)
+
+    history =
+      Enum.map(history, fn {_, message} ->
+        Map.from_struct(message)
+      end)
 
     conn
     |> put_resp_header("content-type", "application/json")
@@ -62,20 +69,38 @@ defmodule Neurow.InternalApi do
 
   post "/v1/publish" do
     case extract_params(conn) do
-      {:ok, message, topic} ->
-        message_id = :os.system_time(:millisecond)
+      {:ok, messages, topics} ->
+        publish_timestamp = :os.system_time(:millisecond)
 
-        :ok = Neurow.ReceiverShardManager.broadcast(topic, message_id, message)
+        nb_publish =
+          length(messages) * length(topics)
 
-        Logger.debug("Message published on topic: #{topic}")
+        Enum.each(topics, fn topic ->
+          Enum.each(messages, fn message ->
+            :ok =
+              Neurow.ReceiverShardManager.broadcast(topic, %Message{
+                message
+                | timestamp: message.timestamp || publish_timestamp
+              })
+
+            Logger.debug("Message published on topic: #{topic}")
+          end)
+        end)
+
         Stats.inc_msg_received()
 
         conn
-        |> put_resp_header("content-type", "text/html")
-        |> send_resp(200, "Published #{message} to #{topic}, id=#{message_id}\n")
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(
+          200,
+          Jason.encode!(%{
+            nb_published: nb_publish,
+            publish_timestamp: publish_timestamp
+          })
+        )
 
       {:error, reason} ->
-        conn |> resp(:bad_request, reason)
+        conn |> send_bad_request(:invalid_payload, reason)
     end
   end
 
@@ -85,18 +110,21 @@ defmodule Neurow.InternalApi do
 
   defp extract_params(conn) do
     with(
-      {:ok, issuer} <- extract_issuer(conn),
-      {:ok, message} <- extract_param(conn, "message"),
-      {:ok, topic} <- extract_param(conn, "topic")
+      {:ok, issuer} <- issuer(conn),
+      publish_request <- PublishRequest.from_json(conn.body_params),
+      :ok <- PublishRequest.validate(publish_request)
     ) do
-      full_topic = "#{issuer}-#{topic}"
-      {:ok, message, full_topic}
+      full_topics =
+        Enum.map(PublishRequest.topics(publish_request), fn topic -> "#{issuer}-#{topic}" end)
+
+      {:ok, PublishRequest.messages(publish_request), full_topics}
     else
-      error -> error
+      error ->
+        error
     end
   end
 
-  defp extract_issuer(conn) do
+  defp issuer(conn) do
     case conn.assigns[:jwt_payload]["iss"] do
       nil -> {:error, "JWT iss is nil"}
       "" -> {:error, "JWT iss is empty"}
@@ -104,11 +132,16 @@ defmodule Neurow.InternalApi do
     end
   end
 
-  defp extract_param(conn, key) do
-    case conn.body_params[key] do
-      nil -> {:error, "#{key} is nil"}
-      "" -> {:error, "#{key} is empty"}
-      output -> {:ok, output}
-    end
+  defp send_bad_request(conn, error_code, error_message) do
+    {:ok, response} =
+      Jason.encode(%{
+        errors: [
+          %{error_code: error_code, error_message: error_message}
+        ]
+      })
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> resp(:bad_request, response)
   end
 end

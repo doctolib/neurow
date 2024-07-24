@@ -99,15 +99,15 @@ defmodule Neurow.PublicApi do
   end
 
   defp process_history(conn, last_event_id, sent, [first | rest]) do
-    {_, {msg_id, msg}} = first
+    {_, message} = first
 
-    if msg_id > last_event_id do
+    if message.timestamp > last_event_id do
       if sent == 0 do
         # Workaround: avoid to loose messages in tests
         Process.sleep(1)
       end
 
-      conn = write_chunk(conn, msg_id, msg)
+      conn = write_chunk(conn, message)
       process_history(conn, last_event_id, sent + 1, rest)
     else
       process_history(conn, last_event_id, sent, rest)
@@ -120,8 +120,8 @@ defmodule Neurow.PublicApi do
 
   defp loop(conn, sse_timeout, keep_alive, last_message, last_ping) do
     receive do
-      {:pubsub_message, msg_id, msg} ->
-        conn = write_chunk(conn, msg_id, msg)
+      {:pubsub_message, message} ->
+        conn = write_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message)
@@ -152,8 +152,13 @@ defmodule Neurow.PublicApi do
     end
   end
 
-  defp write_chunk(conn, msg_id, msg) do
-    {:ok, conn} = chunk(conn, "id: #{msg_id}\ndata: #{msg}\n\n")
+  defp write_chunk(conn, message) do
+    {:ok, conn} =
+      chunk(
+        conn,
+        "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}\n\n"
+      )
+
     conn
   end
 

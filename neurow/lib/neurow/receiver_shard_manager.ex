@@ -66,13 +66,13 @@ defmodule Neurow.ReceiverShardManager do
     end)
   end
 
-  def broadcast(topic, message_id, message) do
+  def broadcast(topic, message) do
     broadcast_topic = broadcast_topic(topic)
 
     Phoenix.PubSub.broadcast!(
       Neurow.PubSub,
       broadcast_topic,
-      {:pubsub_message, topic, message_id, message}
+      {:pubsub_message, topic, message}
     )
   end
 
