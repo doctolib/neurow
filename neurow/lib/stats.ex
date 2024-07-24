@@ -24,12 +24,18 @@ defmodule Stats do
       help: "JWT Errors"
     )
 
+    Gauge.declare(
+      name: :history_rotate,
+      help: "History rotate counter"
+    )
+
     Gauge.set([name: :current_connections], 0)
     Gauge.set([name: :connections], 0)
     Gauge.set([name: :jwt_errors, labels: [:public]], 0)
     Gauge.set([name: :jwt_errors, labels: [:internal]], 0)
     Gauge.set([name: :messages, labels: [:received]], 0)
     Gauge.set([name: :messages, labels: [:published]], 0)
+    Gauge.set([name: :history_rotate], 0)
   end
 
   def inc_connections() do
@@ -55,5 +61,9 @@ defmodule Stats do
 
   def inc_jwt_errors_internal() do
     Gauge.inc(name: :jwt_errors, labels: [:internal])
+  end
+
+  def inc_history_rotate() do
+    Gauge.inc(name: :history_rotate)
   end
 end
