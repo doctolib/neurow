@@ -1,6 +1,5 @@
 defmodule Neurow.InternalApi.MessageTest do
   use ExUnit.Case
-
   alias Neurow.InternalApi.Message
 
   describe "#validate" do

@@ -15,7 +15,7 @@ defmodule Neurow.InternalApi.Endpoint do
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
     inc_error_callback: &Stats.inc_jwt_errors_internal/0,
-    exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above"]
+    exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above", "/history"]
   )
 
   plug(:match)
@@ -54,21 +54,30 @@ defmodule Neurow.InternalApi.Endpoint do
     |> send_resp((cluster_size >= size && 200) || 404, "Cluster size: #{cluster_size}\n")
   end
 
+  get "/history/:topic" do
+    history = Neurow.ReceiverShardManager.get_history(topic)
+    history = Enum.map(history, fn {_, {id, message}} -> %{id: id, message: message} end)
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(history))
+  end
+
   post "/v1/publish" do
     case extract_params(conn) do
       {:ok, messages, topics} ->
         publish_timestamp = :os.system_time(:millisecond)
 
-        nb_publish = length(messages) * length(topics)
+        nb_publish =
+          length(messages) * length(topics)
 
         Enum.each(topics, fn topic ->
           Enum.each(messages, fn message ->
-            Phoenix.PubSub.broadcast!(
-              Neurow.PubSub,
-              topic,
-              {:pubsub_message,
-               %Message{message | timestamp: message.timestamp || publish_timestamp}}
-            )
+            :ok =
+              Neurow.ReceiverShardManager.broadcast(topic, %Message{
+                message
+                | timestamp: message.timestamp || publish_timestamp
+              })
 
             Stats.inc_msg_received()
             Logger.debug("Message published on topic: #{topic}")

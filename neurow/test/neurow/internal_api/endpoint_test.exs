@@ -1,6 +1,9 @@
 defmodule Neurow.InternalApi.EndpointTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   use Plug.Test
+
+  alias Neurow.InternalApi.Message
+
   import JwtHelper
 
   test "GET /ping is available without authentication" do
@@ -100,7 +103,7 @@ defmodule Neurow.InternalApi.EndpointTest do
       assert call.status == 200
 
       assert_received {:pubsub_message,
-                       %Neurow.InternalApi.Message{
+                       %Message{
                          type: "type_foo",
                          payload: "foo56",
                          timestamp: 123_456
@@ -125,14 +128,14 @@ defmodule Neurow.InternalApi.EndpointTest do
       assert call.status == 200
 
       assert_received {:pubsub_message,
-                       %Neurow.InternalApi.Message{
+                       %Message{
                          type: "type_foo",
                          payload: "foo56",
                          timestamp: 123_456
                        }}
 
       assert_received {:pubsub_message,
-                       %Neurow.InternalApi.Message{
+                       %Message{
                          type: "type_foo",
                          payload: "foo56",
                          timestamp: 123_456
@@ -156,19 +159,23 @@ defmodule Neurow.InternalApi.EndpointTest do
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
 
-      assert_received {:pubsub_message,
-                       %Neurow.InternalApi.Message{
-                         type: "type_foo",
-                         payload: "message 1",
-                         timestamp: 123_456
-                       }}
+      assert_received(
+        {:pubsub_message,
+         %Message{
+           type: "type_foo",
+           payload: "message 1",
+           timestamp: 123_456
+         }}
+      )
 
-      assert_received {:pubsub_message,
-                       %Neurow.InternalApi.Message{
-                         type: "type_bar",
-                         payload: "message 2",
-                         timestamp: 123_458
-                       }}
+      assert_received(
+        {:pubsub_message,
+         %Message{
+           type: "type_bar",
+           payload: "message 2",
+           timestamp: 123_458
+         }}
+      )
 
       assert call.status == 200
     end
@@ -204,7 +211,7 @@ defmodule Neurow.InternalApi.EndpointTest do
           assert message.payload == "message 2"
       end
 
-      refute_receive({:pubsub_message, %Neurow.InternalApi.Message{}})
+      refute_received({:pubsub_message, %Message{}})
 
       assert call.status == 200
     end
