@@ -86,7 +86,10 @@ defmodule Neurow.InternalApi.Endpoint do
 
         conn
         |> put_resp_header("content-type", "application/json")
-        |> send_resp(200, "{\"nb_published\": #{nb_publish}}")
+        |> send_resp(200, Jason.encode!(%{
+          nb_published: nb_publish,
+          publish_timestamp: publish_timestamp
+        }))
 
       {:error, reason} ->
         conn |> send_bad_request(:invalid_payload, reason)
