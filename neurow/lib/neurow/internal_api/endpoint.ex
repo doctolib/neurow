@@ -56,7 +56,11 @@ defmodule Neurow.InternalApi.Endpoint do
 
   get "/history/:topic" do
     history = Neurow.ReceiverShardManager.get_history(topic)
-    history = Enum.map(history, fn {_, {id, message}} -> %{id: id, message: message} end)
+    history = Enum.map(history, fn {_, message} -> %{
+      timestamp: message.timestamp,
+      payload: message.payload,
+      type: message.type,
+    } end)
 
     conn
     |> put_resp_header("content-type", "application/json")

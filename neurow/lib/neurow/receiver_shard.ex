@@ -34,7 +34,7 @@ defmodule Neurow.ReceiverShard do
 
     result = :ets.lookup(table_0, topic) ++ :ets.lookup(table_1, topic)
 
-    Enum.sort(result, fn {_, {id_0, _}}, {_, {id_1, _}} -> id_0 < id_1 end)
+    Enum.sort(result, fn {_, message0}, {_, message1} -> message0.timestamp < message1.timestamp end)
   end
 
   @impl true
