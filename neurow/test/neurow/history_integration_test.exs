@@ -229,12 +229,15 @@ defmodule Neurow.HistoryIntegrationTest do
     publish_message("message 2", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(10)
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     publish_message("message 3", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2", "message 3"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(10)
     assert_history("test_issuer1-bar", ["message 3"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(10)
     assert_history("test_issuer1-bar", [])
   end
 end
