@@ -125,9 +125,6 @@ defmodule Neurow.PublicApi do
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message)
-
-      other ->
-        dbg(other)
     after
       1000 ->
         now = :os.system_time(:millisecond)
