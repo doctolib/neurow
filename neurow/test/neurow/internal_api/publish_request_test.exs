@@ -138,7 +138,7 @@ defmodule Neurow.InternalApi.PublishRequestTest do
         })
 
       assert PublishRequest.validate_messages(request) ==
-               {:error, "'type' must be a non-empty string"}
+               {:error, "'event' must be a non-empty string"}
     end
 
     test "returns an error if 'messages' is an empty array" do
@@ -160,7 +160,7 @@ defmodule Neurow.InternalApi.PublishRequestTest do
         })
 
       assert PublishRequest.validate_messages(request) ==
-               {:error, "'type' must be a non-empty string"}
+               {:error, "'event' must be a non-empty string"}
     end
 
     test "returns :ok if 'message' is valid" do
@@ -189,7 +189,7 @@ defmodule Neurow.InternalApi.PublishRequestTest do
 
   defp default_json_message(),
     do: %{
-      "type" => "type-test",
+      "event" => "event-test",
       "payload" => "Test payload",
       "timestamp" => :os.system_time(:millisecond)
     }
@@ -197,6 +197,6 @@ defmodule Neurow.InternalApi.PublishRequestTest do
   defp bad_json_message(),
     do: %{
       default_json_message()
-      | "type" => 1234
+      | "event" => 1234
     }
 end

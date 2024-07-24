@@ -14,7 +14,7 @@ defmodule Neurow.HistoryIntegrationTest do
     {:ok, body} =
       Jason.encode(%{
         message: %{
-          type: "test-message",
+          event: "test-event",
           payload: payload
         },
         topic: topic
@@ -177,7 +177,7 @@ defmodule Neurow.HistoryIntegrationTest do
 
     request_id = subscribe("bar", [{["Last-Event-ID"], to_string(first_id)}])
     {:stream, msg} = next_message()
-    assert msg == "id: #{second_id}\ndata: foo57\n\n"
+    assert msg == "id: #{second_id}\nevent: test-event\ndata: foo57\n\n"
 
     assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
       next_message()
@@ -198,7 +198,8 @@ defmodule Neurow.HistoryIntegrationTest do
     request_id = subscribe("bar", [{["Last-Event-ID"], "12"}])
     output = all_messages()
 
-    assert output == "id: #{first_id}\ndata: foo56\n\nid: #{second_id}\ndata: foo57\n\n"
+    assert output ==
+             "id: #{first_id}\nevent: test-event\ndata: foo56\n\nid: #{second_id}\nevent: test-event\ndata: foo57\n\n"
 
     :ok = :httpc.cancel_request(request_id)
   end
@@ -215,7 +216,8 @@ defmodule Neurow.HistoryIntegrationTest do
 
     expected =
       Enum.reduce_while(12..100, "", fn chunk, acc ->
-        {:cont, acc <> "id: #{Enum.at(ids, chunk)}\ndata: message #{chunk}\n\n"}
+        {:cont,
+         acc <> "id: #{Enum.at(ids, chunk)}\nevent: test-event\ndata: message #{chunk}\n\n"}
       end)
 
     assert output == expected

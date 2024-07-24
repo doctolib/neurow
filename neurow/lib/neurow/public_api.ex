@@ -153,7 +153,12 @@ defmodule Neurow.PublicApi do
   end
 
   defp write_chunk(conn, message) do
-    {:ok, conn} = chunk(conn, "id: #{message.timestamp}\ndata: #{message.payload}\n\n")
+    {:ok, conn} =
+      chunk(
+        conn,
+        "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}\n\n"
+      )
+
     conn
   end
 

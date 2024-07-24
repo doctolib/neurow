@@ -16,7 +16,8 @@ defmodule Neurow.PublicApiIntegrationTest do
       Phoenix.PubSub.broadcast!(
         Neurow.PubSub,
         topic,
-        {:pubsub_message, %Neurow.InternalApi.Message{timestamp: id, payload: message}}
+        {:pubsub_message,
+         %Neurow.InternalApi.Message{event: "test-event", timestamp: id, payload: message}}
       )
   end
 
@@ -106,9 +107,9 @@ defmodule Neurow.PublicApiIntegrationTest do
     publish("test_issuer1-foo57", 43, "hello2")
 
     {:stream, msg} = next_message()
-    assert msg == "id: 42\ndata: hello\n\n"
+    assert msg == "id: 42\nevent: test-event\ndata: hello\n\n"
     {:stream, msg} = next_message()
-    assert msg == "id: 43\ndata: hello2\n\n"
+    assert msg == "id: 43\nevent: test-event\ndata: hello2\n\n"
     :ok = :httpc.cancel_request(request_id)
   end
 
@@ -132,7 +133,7 @@ defmodule Neurow.PublicApiIntegrationTest do
     Process.sleep(1100)
 
     {:stream, msg} = next_message()
-    assert msg == "id: 42\ndata: hello\n\n"
+    assert msg == "id: 42\nevent: test-event\ndata: hello\n\n"
     {:stream, msg} = next_message()
     assert msg == "event: ping\n\n"
     Process.sleep(1100)

@@ -1,5 +1,5 @@
 defmodule Neurow.InternalApi.Message do
-  defstruct [:type, :timestamp, :payload]
+  defstruct [:event, :timestamp, :payload]
 
   def from_json(payload) when is_binary(payload) do
     case Jason.decode(payload) do
@@ -10,7 +10,7 @@ defmodule Neurow.InternalApi.Message do
 
   def from_json(payload) when is_map(payload) do
     %Neurow.InternalApi.Message{
-      type: payload["type"],
+      event: payload["event"],
       timestamp: payload["timestamp"],
       payload: payload["payload"]
     }
@@ -18,11 +18,11 @@ defmodule Neurow.InternalApi.Message do
 
   def validate(message) do
     cond do
-      message.type == nil ->
-        {:error, "'type' is expected"}
+      message.event == nil ->
+        {:error, "'event' is expected"}
 
-      !is_binary(message.type) or bit_size(message.type) == 0 ->
-        {:error, "'type' must be a non-empty string"}
+      !is_binary(message.event) or bit_size(message.event) == 0 ->
+        {:error, "'event' must be a non-empty string"}
 
       message.payload == nil ->
         {:error, "'payload' is expected"}

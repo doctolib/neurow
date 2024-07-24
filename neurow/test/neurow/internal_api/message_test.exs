@@ -6,7 +6,7 @@ defmodule Neurow.InternalApi.MessageTest do
     test "returns :ok if the message without a timestamp is valid" do
       message =
         Message.from_json(%{
-          "type" => "test-type",
+          "event" => "test-event",
           "payload" => "Hello !"
         })
 
@@ -16,7 +16,7 @@ defmodule Neurow.InternalApi.MessageTest do
     test "returns :ok if the message with a timestamp is valid" do
       message =
         Message.from_json(%{
-          "type" => "test-type",
+          "event" => "test-event",
           "payload" => "Hello !",
           "timestamp" => 1234
         })
@@ -24,31 +24,31 @@ defmodule Neurow.InternalApi.MessageTest do
       assert Message.validate(message) == :ok
     end
 
-    test "returns an error if the 'type' is missing" do
+    test "returns an error if 'event' is missing" do
       message =
         Message.from_json(%{
           "payload" => "Hello !",
           "timestamp" => 1234
         })
 
-      assert Message.validate(message) == {:error, "'type' is expected"}
+      assert Message.validate(message) == {:error, "'event' is expected"}
     end
 
-    test "returns an error if the 'type' is not a string" do
+    test "returns an error if 'event' is not a string" do
       message =
         Message.from_json(%{
-          "type" => 123,
+          "event" => 123,
           "payload" => "Hello !",
           "timestamp" => 1234
         })
 
-      assert Message.validate(message) == {:error, "'type' must be a non-empty string"}
+      assert Message.validate(message) == {:error, "'event' must be a non-empty string"}
     end
 
     test "returns an error if the payload is missing" do
       message =
         Message.from_json(%{
-          "type" => "test_type",
+          "event" => "test_event",
           "timestamp" => 1234
         })
 
@@ -58,7 +58,7 @@ defmodule Neurow.InternalApi.MessageTest do
     test "returns an error if the payload is not a string" do
       message =
         Message.from_json(%{
-          "type" => "test_type",
+          "event" => "test_event",
           "payload" => 1234,
           "timestamp" => 1234
         })
@@ -69,7 +69,7 @@ defmodule Neurow.InternalApi.MessageTest do
     test "returns an error if the timestamp is not an integer" do
       message =
         Message.from_json(%{
-          "type" => "test_type",
+          "event" => "test_event",
           "payload" => "test payload",
           "timestamp" => "foo"
         })
@@ -80,7 +80,7 @@ defmodule Neurow.InternalApi.MessageTest do
     test "returns an error if the timestamp is a negative integer " do
       message =
         Message.from_json(%{
-          "type" => "test_type",
+          "event" => "test_event",
           "payload" => "test payload",
           "timestamp" => -1
         })

@@ -35,7 +35,7 @@ defmodule Neurow.InternalApi.EndpointTest do
     test "returns a 403 if called without a JWT token" do
       {:ok, body} =
         Jason.encode(%{
-          message: %{type: "type_foo", payload: "foo56"},
+          message: %{event: "event_foo", payload: "foo56"},
           topic: "bar"
         })
 
@@ -49,7 +49,7 @@ defmodule Neurow.InternalApi.EndpointTest do
     test "returns a 403 if called with an invalid JWT token" do
       {:ok, body} =
         Jason.encode(%{
-          message: %{type: "type_foo", payload: "foo56", timestamp: 123_456},
+          message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
           topic: "bar"
         })
 
@@ -91,7 +91,7 @@ defmodule Neurow.InternalApi.EndpointTest do
 
       {:ok, body} =
         Jason.encode(%{
-          message: %{type: "type_foo", payload: "foo56", timestamp: 123_456},
+          message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
           topic: "test-topic1"
         })
 
@@ -105,7 +105,7 @@ defmodule Neurow.InternalApi.EndpointTest do
 
       assert_received {:pubsub_message,
                        %Message{
-                         type: "type_foo",
+                         event: "event_foo",
                          payload: "foo56",
                          timestamp: 123_456
                        }}
@@ -117,7 +117,7 @@ defmodule Neurow.InternalApi.EndpointTest do
 
       {:ok, body} =
         Jason.encode(%{
-          message: %{type: "type_foo", payload: "foo56", timestamp: 123_456},
+          message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
           topics: ["test-topic1", "test-topic2"]
         })
 
@@ -131,14 +131,14 @@ defmodule Neurow.InternalApi.EndpointTest do
 
       assert_received {:pubsub_message,
                        %Message{
-                         type: "type_foo",
+                         event: "event_foo",
                          payload: "foo56",
                          timestamp: 123_456
                        }}
 
       assert_received {:pubsub_message,
                        %Message{
-                         type: "type_foo",
+                         event: "event_foo",
                          payload: "foo56",
                          timestamp: 123_456
                        }}
@@ -150,8 +150,8 @@ defmodule Neurow.InternalApi.EndpointTest do
       {:ok, body} =
         Jason.encode(%{
           messages: [
-            %{type: "type_foo", payload: "message 1", timestamp: 123_456},
-            %{type: "type_bar", payload: "message 2", timestamp: 123_458}
+            %{event: "event_foo", payload: "message 1", timestamp: 123_456},
+            %{event: "event_bar", payload: "message 2", timestamp: 123_458}
           ],
           topic: "test-topic1"
         })
@@ -167,7 +167,7 @@ defmodule Neurow.InternalApi.EndpointTest do
       assert_received(
         {:pubsub_message,
          %Message{
-           type: "type_foo",
+           event: "event_foo",
            payload: "message 1",
            timestamp: 123_456
          }}
@@ -176,7 +176,7 @@ defmodule Neurow.InternalApi.EndpointTest do
       assert_received(
         {:pubsub_message,
          %Message{
-           type: "type_bar",
+           event: "event_bar",
            payload: "message 2",
            timestamp: 123_458
          }}
@@ -189,8 +189,8 @@ defmodule Neurow.InternalApi.EndpointTest do
       {:ok, body} =
         Jason.encode(%{
           messages: [
-            %{type: "type_foo", payload: "message 1"},
-            %{type: "type_bar", payload: "message 2"}
+            %{event: "event_foo", payload: "message 1"},
+            %{event: "event_bar", payload: "message 2"}
           ],
           topic: "test-topic1"
         })
@@ -203,14 +203,14 @@ defmodule Neurow.InternalApi.EndpointTest do
       receive do
         {:pubsub_message, message} ->
           assert message.timestamp > 0
-          assert message.type == "type_foo"
+          assert message.event == "event_foo"
           assert message.payload == "message 1"
       end
 
       receive do
         {:pubsub_message, message} ->
           assert message.timestamp > 0
-          assert message.type == "type_bar"
+          assert message.event == "event_bar"
           assert message.payload == "message 2"
       end
 

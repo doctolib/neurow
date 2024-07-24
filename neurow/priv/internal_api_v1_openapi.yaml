@@ -28,10 +28,10 @@ info:
     ```
     ## Publishing messages
 
-    A message is defined by a type and a text payload:
+    A message is defined by a event name and a text payload:
     ```json
     {
-      "type": "hello",
+      "event": "hello",
       "payload": "Hello world !"
     }
     ```
@@ -44,7 +44,7 @@ info:
     For example, if a backend publish a message using the internal API with a JWT with the issuer "my_backend_1", to receive its messages, the frontend 
     must authenticate with an JWT with the issuer "my_backend_1". 
 
-    This way of isolating issuers allows the usage of the same Neurow cluster from multiple backends without any risk of collision of between message types,
+    This way of isolating issuers allows the usage of the same Neurow cluster from multiple backends without any risk of collision of between message event names,
     and by preventing the security risk of having a frontend that subscribes to messages sent by another backends.
 
 
@@ -54,7 +54,7 @@ info:
     {
       "topic": "user:123",
       "message": {
-        "type": "hello",
+        "event": "hello",
         "payload": "Hello world !"
       }
     }
@@ -66,7 +66,7 @@ info:
     {
       "topics": ["user:123", "user:456"]
       "message": {
-        "type": "hello",
+        "event": "hello",
         "payload": "Hello world !"
       }
     }
@@ -78,11 +78,11 @@ info:
       "topics": ["user:123", "user:456"]
       "messages": [
         {
-          "type": "hello",
+          "event": "hello",
           "payload": "Hello world !"
         },
         {
-          "type": "welcome",
+          "event": "welcome",
           "payload": "Welcome on Neurow"
         }
       ]
@@ -105,7 +105,7 @@ info:
     The internal API also allow to define a timestamp (in milliseconds) for each published message:
     ```json
     {
-      "type": "hello",
+      "event": "hello",
       "payload": "Hello world !",
       "timestamp": 1516239022123
     }
@@ -232,10 +232,10 @@ components:
     Message:
       type: object
       required:
-        - type
+        - event
         - payload
       properties:
-        type:
+        event:
           type: string
         payload:
           type: object
