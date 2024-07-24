@@ -6,6 +6,7 @@ defmodule Neurow.HistoryIntegrationTest do
   setup do
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+    Process.sleep(5)
     :ok
   end
 
