@@ -46,24 +46,82 @@ defmodule Neurow.PublicApi do
 
         :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
 
-        conn = send_chunked(conn, 200)
+        last_event_id = extract_last_event_id(conn)
 
-        Logger.debug("Client subscribed to #{topic}")
+        case last_event_id do
+          :error ->
+            conn |> resp(:bad_request, "Wrong value for last-event-id")
 
-        last_message = :os.system_time(:millisecond)
-        conn |> loop(timeout, keep_alive, last_message, last_message)
-        Logger.debug("Client disconnected from #{topic}")
-        conn
+          _ ->
+            conn = send_chunked(conn, 200)
+            conn = import_history(conn, topic, last_event_id)
+
+            Logger.debug("Client subscribed to #{topic}")
+
+            last_message = :os.system_time(:millisecond)
+            conn |> loop(timeout, keep_alive, last_message, last_message)
+            Logger.debug("Client disconnected from #{topic}")
+            conn
+        end
 
       _ ->
         conn |> resp(:bad_request, "Expected JWT claims are missing")
     end
   end
 
+  defp extract_last_event_id(conn) do
+    case conn.req_headers |> List.keyfind("last-event-id", 0) do
+      nil ->
+        nil
+
+      {"last-event-id", last_event_id} ->
+        case Integer.parse(last_event_id) do
+          {last_event_id, ""} -> last_event_id
+          _ -> :error
+        end
+    end
+  end
+
+  defp import_history(conn, _, nil) do
+    conn
+  end
+
+  defp import_history(conn, topic, last_event_id) do
+    history = Neurow.ReceiverShardManager.get_history(topic)
+
+    {conn, sent} = process_history(conn, last_event_id, 0, history)
+
+    Logger.debug(fn ->
+      "Imported history for #{topic}, last_event_id: #{last_event_id}, imported size: #{sent}"
+    end)
+
+    conn
+  end
+
+  defp process_history(conn, last_event_id, sent, [first | rest]) do
+    {_, message} = first
+
+    if message.timestamp > last_event_id do
+      if sent == 0 do
+        # Workaround: avoid to loose messages in tests
+        Process.sleep(1)
+      end
+
+      conn = write_chunk(conn, message)
+      process_history(conn, last_event_id, sent + 1, rest)
+    else
+      process_history(conn, last_event_id, sent, rest)
+    end
+  end
+
+  defp process_history(conn, _, sent, []) do
+    {conn, sent}
+  end
+
   defp loop(conn, sse_timeout, keep_alive, last_message, last_ping) do
     receive do
-      {:pubsub_message, msg_id, msg} ->
-        {:ok, conn} = chunk(conn, "id: #{msg_id}\ndata: #{msg}\n\n")
+      {:pubsub_message, message} ->
+        conn = write_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message)
@@ -92,6 +150,16 @@ defmodule Neurow.PublicApi do
             loop(conn, sse_timeout, keep_alive, last_message, last_ping)
         end
     end
+  end
+
+  defp write_chunk(conn, message) do
+    {:ok, conn} =
+      chunk(
+        conn,
+        "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}\n\n"
+      )
+
+    conn
   end
 
   match _ do

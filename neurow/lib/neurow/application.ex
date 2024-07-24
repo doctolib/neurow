@@ -8,14 +8,16 @@ defmodule Neurow.Application do
   @impl true
   @spec start(any(), any()) :: {:error, any()} | {:ok, pid()}
   def start(_type, _args) do
-    {:ok, public_api_port} = Application.fetch_env(:neurow, :public_api_port)
-    {:ok, internal_api_port} = Application.fetch_env(:neurow, :internal_api_port)
+    public_api_port = Application.fetch_env!(:neurow, :public_api_port)
+    internal_api_port = Application.fetch_env!(:neurow, :internal_api_port)
     Logger.warning("Current host #{node()}")
 
     Logger.warning("Starting internal API on port #{internal_api_port}")
 
     {:ok, ssl_keyfile} = Application.fetch_env(:neurow, :ssl_keyfile)
     {:ok, ssl_certfile} = Application.fetch_env(:neurow, :ssl_certfile)
+
+    {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
 
     base_public_api_http_config = [
       port: public_api_port,
@@ -42,16 +44,19 @@ defmodule Neurow.Application do
         {:http, base_public_api_http_config}
       end
 
-    children = [
-      Neurow.Configuration,
-      {Phoenix.PubSub,
-       name: Neurow.PubSub, options: [adapter: Phoenix.PubSub.PG2, pool_size: 10]},
-      {Plug.Cowboy, scheme: :http, plug: Neurow.InternalApi, options: [port: internal_api_port]},
-      {Plug.Cowboy,
-       scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
-      {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
-      {StopListener, []}
-    ]
+    children =
+      [
+        Neurow.Configuration,
+        {Phoenix.PubSub,
+         name: Neurow.PubSub, options: [adapter: Phoenix.PubSub.PG2, pool_size: 10]},
+        {Plug.Cowboy,
+         scheme: :http, plug: Neurow.InternalApi.Endpoint, options: [port: internal_api_port]},
+        {Plug.Cowboy,
+         scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
+        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
+        {StopListener, []},
+        {Neurow.ReceiverShardManager, [history_min_duration]}
+      ] ++ Neurow.ReceiverShardManager.create_receivers()
 
     MetricsPlugExporter.setup()
     Stats.setup()

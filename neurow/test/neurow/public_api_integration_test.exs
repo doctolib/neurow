@@ -12,10 +12,16 @@ defmodule Neurow.PublicApiIntegrationTest do
   end
 
   defp publish(topic, id, message) do
-    :ok = Phoenix.PubSub.broadcast!(Neurow.PubSub, topic, {:pubsub_message, id, message})
+    :ok =
+      Phoenix.PubSub.broadcast!(
+        Neurow.PubSub,
+        topic,
+        {:pubsub_message,
+         %Neurow.InternalApi.Message{event: "test-event", timestamp: id, payload: message}}
+      )
   end
 
-  def next_message(timeout \\ 100) do
+  defp next_message(timeout \\ 100) do
     receive do
       {:http, {_, {:error, msg}}} ->
         raise("Http error: #{inspect(msg)}")
@@ -96,14 +102,14 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert_headers(headers, {"cache-control", "no-cache"})
     assert_headers(headers, {"connection", "close"})
 
-    publish("test_issuer1-foo57", "42", "hello")
+    publish("test_issuer1-foo57", 42, "hello")
     Process.sleep(10)
-    publish("test_issuer1-foo57", "43", "hello2")
+    publish("test_issuer1-foo57", 43, "hello2")
 
     {:stream, msg} = next_message()
-    assert msg == "id: 42\ndata: hello\n\n"
+    assert msg == "id: 42\nevent: test-event\ndata: hello\n\n"
     {:stream, msg} = next_message()
-    assert msg == "id: 43\ndata: hello2\n\n"
+    assert msg == "id: 43\nevent: test-event\ndata: hello2\n\n"
     :ok = :httpc.cancel_request(request_id)
   end
 
@@ -123,11 +129,11 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert_headers(headers, {"cache-control", "no-cache"})
     assert_headers(headers, {"connection", "close"})
 
-    publish("test_issuer1-foo57", "42", "hello")
+    publish("test_issuer1-foo57", 42, "hello")
     Process.sleep(1100)
 
     {:stream, msg} = next_message()
-    assert msg == "id: 42\ndata: hello\n\n"
+    assert msg == "id: 42\nevent: test-event\ndata: hello\n\n"
     {:stream, msg} = next_message()
     assert msg == "event: ping\n\n"
     Process.sleep(1100)
