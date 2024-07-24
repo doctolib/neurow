@@ -91,7 +91,10 @@ defmodule LoadTest.User.Publisher do
     {:ok, body} =
       Jason.encode(%{
         topic: state.topic,
-        message: raw_message
+        message: %{
+          event: "load_test_event",
+          payload: raw_message
+        }
       })
 
     result =

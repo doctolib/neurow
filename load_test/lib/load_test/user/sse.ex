@@ -120,7 +120,7 @@ defmodule SseUser do
   end
 
   defp check_message(state, received_message, expected_message) do
-    clean_received_message = String.replace(received_message, ~r"id: .*\n", "")
+    clean_received_message = String.replace(received_message, ~r"id: .*\nevent: .*\n", "")
 
     try do
       [_, ts, message, _, _] = String.split(clean_received_message, " ", parts: 5)
