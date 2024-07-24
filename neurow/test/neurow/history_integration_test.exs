@@ -28,9 +28,11 @@ defmodule Neurow.HistoryIntegrationTest do
 
     drop_one_message()
     drop_one_message()
-    [[_, id]] = Regex.scan(~r/id=(\d+)/, call.resp_body)
+
+    # Avoid to publish message in the same millisecond
     Process.sleep(2)
-    id
+    result = Jason.decode!(call.resp_body)
+    result["publish_timestamp"]
   end
 
   defp history(topic) do
@@ -111,7 +113,7 @@ defmodule Neurow.HistoryIntegrationTest do
     assert length(expected_history) == length(actual_history)
 
     Enum.each(0..(length(expected_history) - 1), fn index ->
-      assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["message"]
+      assert Enum.at(expected_history, index) == Enum.at(actual_history, index)["payload"]
     end)
 
     drop_one_message()
@@ -172,7 +174,7 @@ defmodule Neurow.HistoryIntegrationTest do
 
     :ok = :httpc.cancel_request(request_id)
 
-    request_id = subscribe("bar", [{["Last-Event-ID"], first_id}])
+    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(first_id)}])
     {:stream, msg} = next_message()
     assert msg == "id: #{second_id}\ndata: foo57\n\n"
 
@@ -183,7 +185,7 @@ defmodule Neurow.HistoryIntegrationTest do
     :ok = :httpc.cancel_request(request_id)
 
     # End of is history
-    request_id = subscribe("bar", [{["Last-Event-ID"], second_id}])
+    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(second_id)}])
 
     assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
       next_message()
@@ -207,7 +209,7 @@ defmodule Neurow.HistoryIntegrationTest do
       end)
 
     start = 11
-    request_id = subscribe("bar", [{["Last-Event-ID"], Enum.at(ids, start)}])
+    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(Enum.at(ids, start))}])
     output = all_messages()
 
     expected =

@@ -56,11 +56,15 @@ defmodule Neurow.InternalApi.Endpoint do
 
   get "/history/:topic" do
     history = Neurow.ReceiverShardManager.get_history(topic)
-    history = Enum.map(history, fn {_, message} -> %{
-      timestamp: message.timestamp,
-      payload: message.payload,
-      type: message.type,
-    } end)
+
+    history =
+      Enum.map(history, fn {_, message} ->
+        %{
+          timestamp: message.timestamp,
+          payload: message.payload,
+          type: message.type
+        }
+      end)
 
     conn
     |> put_resp_header("content-type", "application/json")
@@ -90,10 +94,13 @@ defmodule Neurow.InternalApi.Endpoint do
 
         conn
         |> put_resp_header("content-type", "application/json")
-        |> send_resp(200, Jason.encode!(%{
-          nb_published: nb_publish,
-          publish_timestamp: publish_timestamp
-        }))
+        |> send_resp(
+          200,
+          Jason.encode!(%{
+            nb_published: nb_publish,
+            publish_timestamp: publish_timestamp
+          })
+        )
 
       {:error, reason} ->
         conn |> send_bad_request(:invalid_payload, reason)
