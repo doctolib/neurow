@@ -6,7 +6,7 @@ defmodule Neurow.HistoryIntegrationTest do
   setup do
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
-    Process.sleep(5)
+    Process.sleep(20)
     :ok
   end
 
@@ -50,7 +50,7 @@ defmodule Neurow.HistoryIntegrationTest do
     end
   end
 
-  defp next_message(timeout \\ 200) do
+  defp next_message(timeout \\ 100) do
     receive do
       {:http, {_, {:error, msg}}} ->
         raise("Http error: #{inspect(msg)}")
@@ -72,7 +72,7 @@ defmodule Neurow.HistoryIntegrationTest do
     end
   end
 
-  defp all_messages(timeout \\ 200) do
+  defp all_messages(timeout \\ 100) do
     try do
       {:stream, msg} = next_message(timeout)
       msg <> all_messages(timeout)
@@ -229,15 +229,15 @@ defmodule Neurow.HistoryIntegrationTest do
     publish_message("message 2", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
-    Process.sleep(10)
+    Process.sleep(20)
     assert_history("test_issuer1-bar", ["message 1", "message 2"])
     publish_message("message 3", "bar")
     assert_history("test_issuer1-bar", ["message 1", "message 2", "message 3"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
-    Process.sleep(10)
+    Process.sleep(20)
     assert_history("test_issuer1-bar", ["message 3"])
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
-    Process.sleep(10)
+    Process.sleep(20)
     assert_history("test_issuer1-bar", [])
   end
 end
