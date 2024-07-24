@@ -1,5 +1,5 @@
 defmodule Neurow.InternalApi.EndpointTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   use Plug.Test
 
   alias Neurow.InternalApi.Message
@@ -99,8 +99,9 @@ defmodule Neurow.InternalApi.EndpointTest do
         conn(:post, "/v1/publish", body) |> put_jwt_token_in_req_header_internal_api()
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
-
       assert call.status == 200
+
+      Process.sleep(20)
 
       assert_received {:pubsub_message,
                        %Message{
@@ -124,8 +125,9 @@ defmodule Neurow.InternalApi.EndpointTest do
         conn(:post, "/v1/publish", body) |> put_jwt_token_in_req_header_internal_api()
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
-
       assert call.status == 200
+
+      Process.sleep(20)
 
       assert_received {:pubsub_message,
                        %Message{
@@ -158,6 +160,9 @@ defmodule Neurow.InternalApi.EndpointTest do
         conn(:post, "/v1/publish", body) |> put_jwt_token_in_req_header_internal_api()
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
+      assert call.status == 200
+
+      Process.sleep(20)
 
       assert_received(
         {:pubsub_message,
@@ -176,8 +181,6 @@ defmodule Neurow.InternalApi.EndpointTest do
            timestamp: 123_458
          }}
       )
-
-      assert call.status == 200
     end
 
     test "provides a timestamp if the message timestamp is not provided in the request payload" do
