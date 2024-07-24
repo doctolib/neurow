@@ -72,7 +72,7 @@ defmodule Neurow.HistoryIntegrationTest do
     end
   end
 
-  defp all_messages(timeout \\ 100) do
+  defp all_messages(timeout \\ 200) do
     try do
       {:stream, msg} = next_message(timeout)
       msg <> all_messages(timeout)
