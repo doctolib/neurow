@@ -17,6 +17,18 @@ jobs:
       - run: cd neurow && mix compile --warnings-as-errors
       - run: cd neurow && mix test
 
+  ci-loadtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
+        with:
+          otp-version: 26
+          elixir-version: 1.17
+      - run: cd load_test && mix format --check-formatted
+      - run: cd load_test && mix deps.get
+      - run: cd load_test && mix compile --warnings-as-errors
+
   docker:
     runs-on: ubuntu-latest
     steps:
