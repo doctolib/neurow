@@ -22,6 +22,8 @@ defmodule Neurow.InternalApi.Endpoint do
   plug(Plug.Parsers, parsers: [:json], json_decoder: Jason)
   plug(:dispatch)
 
+  @revision System.get_env("GIT_COMMIT")
+
   get "/" do
     conn
     |> put_resp_header("content-type", "text/plain")
@@ -30,8 +32,8 @@ defmodule Neurow.InternalApi.Endpoint do
 
   get "/ping" do
     conn
-    |> put_resp_header("content-type", "text/plain")
-    |> send_resp(200, "ok")
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{status: :ok, revision: @revision}))
   end
 
   get "/nodes" do
