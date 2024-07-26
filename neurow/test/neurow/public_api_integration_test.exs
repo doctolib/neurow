@@ -3,13 +3,7 @@ defmodule Neurow.PublicApiIntegrationTest do
   use Plug.Test
   import JwtHelper
 
-  test "GET /v1/subscribe 403" do
-    conn =
-      conn(:get, "/v1/subscribe")
-
-    call = Neurow.PublicApi.call(conn, [])
-    assert call.status == 403
-  end
+  @subscribe_url "http://localhost:4000/v1/subscribe"
 
   defp publish(topic, id, message) do
     :ok =
@@ -47,15 +41,21 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert {to_charlist(key), to_charlist(value)} in headers
   end
 
-  test "GET /v1/subscribe 200 no message" do
-    url = "http://localhost:4000/v1/subscribe"
+  test "GET /v1/subscribe 403" do
+    conn =
+      conn(:get, "/v1/subscribe")
 
+    call = Neurow.PublicApi.call(conn, [])
+    assert call.status == 403
+  end
+
+  test "GET /v1/subscribe 200 no message" do
     headers = [
       {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo56")}"}
     ]
 
     {:ok, request_id} =
-      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
 
     {:start, headers} = next_message()
     assert_headers(headers, {"content-type", "text/event-stream"})
@@ -66,14 +66,12 @@ defmodule Neurow.PublicApiIntegrationTest do
   end
 
   test "GET /v1/subscribe 200 timeout" do
-    url = "http://localhost:4000/v1/subscribe"
-
     headers = [
       {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo56")}"}
     ]
 
     {:ok, request_id} =
-      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
 
     {:start, headers} = next_message()
     assert_headers(headers, {"content-type", "text/event-stream"})
@@ -88,14 +86,12 @@ defmodule Neurow.PublicApiIntegrationTest do
   end
 
   test "GET /v1/subscribe 200 two messages" do
-    url = "http://localhost:4000/v1/subscribe"
-
     headers = [
       {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo57")}"}
     ]
 
     {:ok, request_id} =
-      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
 
     {:start, headers} = next_message()
     assert_headers(headers, {"content-type", "text/event-stream"})
@@ -114,15 +110,13 @@ defmodule Neurow.PublicApiIntegrationTest do
   end
 
   test "GET /v1/subscribe 200 sse keepalive" do
-    url = "http://localhost:4000/v1/subscribe"
-
     headers = [
       {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo57")}"},
       {["x-sse-keepalive"], "100"}
     ]
 
     {:ok, request_id} =
-      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
 
     {:start, headers} = next_message()
     assert_headers(headers, {"content-type", "text/event-stream"})
@@ -143,15 +137,13 @@ defmodule Neurow.PublicApiIntegrationTest do
   end
 
   test "GET /v1/subscribe 200 sse timeout" do
-    url = "http://localhost:4000/v1/subscribe"
-
     headers = [
       {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo57")}"},
       {["x-sse-timeout"], "100"}
     ]
 
     {:ok, request_id} =
-      :httpc.request(:get, {url, headers}, [], [{:sync, false}, {:stream, :self}])
+      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
 
     {:start, headers} = next_message()
     assert_headers(headers, {"content-type", "text/event-stream"})
@@ -164,5 +156,62 @@ defmodule Neurow.PublicApiIntegrationTest do
     assert msg == ""
     {:end} = next_message()
     :ok = :httpc.cancel_request(request_id)
+  end
+
+  describe "preflight requests" do
+    test "denies access if the request does not contain the Origin headers" do
+      response =
+        Neurow.PublicApi.call(
+          conn(:options, "/v1/subscribe")
+          |> put_req_header("access-control-request-headers", "authorization"),
+          []
+        )
+
+      assert response.status == 400
+    end
+
+    test "denies access if the request does not contain the Access-Control-Request-Headers headers" do
+      response =
+        Neurow.PublicApi.call(
+          conn(:options, "/v1/subscribe")
+          |> put_req_header("origin", "https://www.doctolib.fr"),
+          []
+        )
+
+      assert response.status == 400
+    end
+
+    test "denies access if the request Origin is not part of the list of allowed origins" do
+      response =
+        Neurow.PublicApi.call(
+          conn(:options, "/v1/subscribe")
+          |> put_req_header("origin", "https://www.unauthorized-domain.com")
+          |> put_req_header("access-control-request-headers", "authorization"),
+          []
+        )
+
+      assert response.status == 400
+    end
+
+    test "allow access if the Origin is part of the list of allowed origins" do
+      response =
+        Neurow.PublicApi.call(
+          conn(:options, "/v1/subscribe")
+          |> put_req_header("origin", "https://www.doctolib.fr")
+          |> put_req_header("access-control-request-headers", "authorization"),
+          []
+        )
+
+      assert response.status == 204
+
+      assert {"access-control-allow-origin", "https://www.doctolib.fr"} in response.resp_headers,
+             "access-control-allow-origin response header"
+
+      assert {"access-control-allow-headers", "authorization"} in response.resp_headers,
+             "access-control-allow-headers response header"
+
+      assert {"access-control-allow-methods", "GET"} in response.resp_headers,
+             "access-control-allow-methods response header"
+    end
   end
 end
