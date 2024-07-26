@@ -8,6 +8,7 @@ defmodule Neurow.PublicApi do
   plug(Neurow.JwtAuthPlug,
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
     audience: &Neurow.Configuration.public_api_audience/0,
+    send_forbidden: &Neurow.PublicApi.send_forbidden/3,
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
@@ -37,9 +38,9 @@ defmodule Neurow.PublicApi do
         conn =
           conn
           |> put_resp_header("content-type", "text/event-stream")
+          |> put_resp_header("access-control-allow-origin", "*")
           |> put_resp_header("cache-control", "no-cache")
           |> put_resp_header("connection", "close")
-          |> put_resp_header("access-control-allow-origin", "*")
           |> put_resp_header("x-sse-server", to_string(node()))
           |> put_resp_header("x-sse-timeout", to_string(timeout))
           |> put_resp_header("x-sse-keepalive", to_string(keep_alive))
@@ -67,6 +68,34 @@ defmodule Neurow.PublicApi do
       _ ->
         conn |> resp(:bad_request, "Expected JWT claims are missing")
     end
+  end
+
+  def send_forbidden(conn, error_code, error_message) do
+    origin =
+      case conn |> get_req_header("origin") do
+        [origin] -> origin
+        _ -> "*"
+      end
+
+    response =
+      Jason.encode!(%{
+        errors: [
+          %{error_code: error_code, error_message: error_message}
+        ]
+      })
+
+    now = :os.system_time(:seconds)
+
+    {:ok, conn} =
+      conn
+      |> put_resp_header("content-type", "text/event-stream")
+      |> put_resp_header("access-control-allow-origin", origin)
+      |> put_resp_header("cache-control", "no-cache")
+      |> put_resp_header("connection", "close")
+      |> send_chunked(:forbidden)
+      |> chunk("id:#{now}\nevent: neurow_error_forbidden\ndata:#{response}\n\n")
+
+    conn
   end
 
   defp extract_last_event_id(conn) do
