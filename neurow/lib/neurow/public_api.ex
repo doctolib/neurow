@@ -5,6 +5,8 @@ defmodule Neurow.PublicApi do
 
   plug(:monitor_sse)
 
+  plug(:cors_preflight_request)
+
   plug(Neurow.JwtAuthPlug,
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
     audience: &Neurow.Configuration.public_api_audience/0,
@@ -96,6 +98,41 @@ defmodule Neurow.PublicApi do
       |> chunk("id:#{now}\nevent: neurow_error_forbidden\ndata:#{response}\n\n")
 
     conn
+  end
+
+  def cors_preflight_request(conn, _options) do
+    case conn.method do
+      "OPTIONS" ->
+        with(
+          [control_request_headers] <- conn |> get_req_header("access-control-request-headers"),
+          [origin] <- conn |> get_req_header("origin")
+        ) do
+          if origin_allowed?(origin) do
+            conn
+            |> put_resp_header("access-control-allow-methods", "GET")
+            |> put_resp_header("access-control-allow-headers", control_request_headers)
+            |> put_resp_header("access-control-allow-origin", origin)
+            |> put_resp_header(
+              "access-control-max-age",
+              preflight_request_max_page()
+            )
+            |> resp(:no_content, "")
+            |> halt()
+          else
+            conn |> resp(:bad_request, "Origin is not allowed") |> halt()
+          end
+        else
+          _ ->
+            conn |> resp(:bad_request, "Invalid preflight request") |> halt()
+        end
+
+      _ ->
+        conn
+    end
+  end
+
+  match _ do
+    send_resp(conn, 404, "")
   end
 
   defp extract_last_event_id(conn) do
@@ -191,8 +228,13 @@ defmodule Neurow.PublicApi do
     conn
   end
 
-  match _ do
-    send_resp(conn, 404, "")
+  defp preflight_request_max_page(),
+    do: Integer.to_string(Application.fetch_env!(:neurow, :public_api_preflight_max_age))
+
+  defp origin_allowed?(origin) do
+    Enum.any?(Application.fetch_env!(:neurow, :public_api_allowed_origins), fn allowed_origin ->
+      String.match?(origin, allowed_origin)
+    end)
   end
 
   defp monitor_sse(conn, _) do
