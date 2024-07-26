@@ -212,6 +212,10 @@ defmodule Neurow.PublicApiIntegrationTest do
 
       assert {"access-control-allow-methods", "GET"} in response.resp_headers,
              "access-control-allow-methods response header"
+
+      assert {"access-control-max-age",
+              Integer.to_string(Application.fetch_env!(:neurow, :public_api_preflight_max_age))} in response.resp_headers,
+             "access-control-max-age response header"
     end
   end
 end

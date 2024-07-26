@@ -5,7 +5,7 @@ defmodule Neurow.PublicApi do
 
   plug(:monitor_sse)
 
-  plug(:cors_preflight_request)
+  plug(:preflight_request)
 
   plug(Neurow.JwtAuthPlug,
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
@@ -100,7 +100,7 @@ defmodule Neurow.PublicApi do
     conn
   end
 
-  def cors_preflight_request(conn, _options) do
+  def preflight_request(conn, _options) do
     case conn.method do
       "OPTIONS" ->
         with(
@@ -114,7 +114,7 @@ defmodule Neurow.PublicApi do
             |> put_resp_header("access-control-allow-origin", origin)
             |> put_resp_header(
               "access-control-max-age",
-              preflight_request_max_page()
+              preflight_request_max_age()
             )
             |> resp(:no_content, "")
             |> halt()
@@ -228,7 +228,7 @@ defmodule Neurow.PublicApi do
     conn
   end
 
-  defp preflight_request_max_page(),
+  defp preflight_request_max_age(),
     do: Integer.to_string(Application.fetch_env!(:neurow, :public_api_preflight_max_age))
 
   defp origin_allowed?(origin) do
