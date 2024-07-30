@@ -19,6 +19,7 @@ RUN mix deps.get
 COPY config /app/config/
 COPY lib /app/lib/
 
+ARG GIT_COMMIT=no_commit
 RUN mix release
 
 FROM ${BUILDER_IMAGE}
