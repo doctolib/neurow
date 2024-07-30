@@ -21,6 +21,6 @@ defmodule SSEMonitor do
 
   def terminate(reason, _) do
     Stats.dec_connections()
-    Logger.debug("SSE connection terminated: #{reason}")
+    Logger.debug("SSE connection terminated: #{inspect(reason)}")
   end
 end

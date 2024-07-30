@@ -18,6 +18,11 @@ defmodule Neurow.JwtAuthPlugTest do
          audience: @test_audience,
          verbose_authentication_errors: true,
          max_lifetime: 60 * 2,
+         # For testing that the call to send_forbidden is properly delegated, error codes and messages
+         # are just stored in conn to be asserted after
+         send_forbidden: fn conn, error_code, error_message ->
+           conn |> assign(:forbidden_error, {error_code, error_message})
+         end,
          jwk_provider: fn issuer ->
            case issuer do
              "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]
@@ -30,7 +35,7 @@ defmodule Neurow.JwtAuthPlugTest do
        })}
   end
 
-  test "should forward the request to the plug pipeline if a valid JWT token is provided in the request",
+  test "forwards the request to the plug pipeline if a valid JWT token is provided in the request",
        %{
          default_opts: opts
        } do
@@ -48,7 +53,7 @@ defmodule Neurow.JwtAuthPlugTest do
     assert response.assigns[:jwt_payload] == jwt_payload
   end
 
-  test "should not check authentication and forward the request to the plug pipeline if the request path matches a excluded path",
+  test "checks authentication and forward the request to the plug pipeline if the request path matches a excluded path",
        %{
          default_opts: opts
        } do
@@ -75,7 +80,7 @@ defmodule Neurow.JwtAuthPlugTest do
     assert response.assigns[:jwt_payload] == nil
   end
 
-  test "should not provide details about authentication errors if verbose_authentication_errors is set to false",
+  test "don not provide details about authentication errors if verbose_authentication_errors is set to false",
        %{
          default_opts: opts
        } do
@@ -86,28 +91,25 @@ defmodule Neurow.JwtAuthPlugTest do
       )
 
     assert response.halted
-    assert 403 == response.status, "HTTP status"
 
-    assert {"content-type", "application/json"} in response.resp_headers,
-           "Response content type"
-
-    assert error_code(response) == "invalid_authentication_token", "Response body error code"
+    assert response.assigns[:forbidden_error] ==
+             {:invalid_authentication_token, "Invalid authentication token"},
+           "Error details"
   end
 
   describe "Authorization header" do
-    test "should deny access if the authorization header is not provided", %{default_opts: opts} do
+    test "denies access if the authorization header is not provided", %{default_opts: opts} do
       response = Neurow.JwtAuthPlug.call(conn(:get, "/test"), opts)
 
       assert response.halted, "Response halted"
-      assert 403 == response.status, "HTTP status"
+      assert response.halted
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_authorization_header", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_authorization_header, "Invalid authorization header"},
+             "Error details"
     end
 
-    test "should deny access if the authorization header does not contain a bearer token", %{
+    test "denies access if the authorization header does not contain a bearer token", %{
       default_opts: opts
     } do
       response =
@@ -117,15 +119,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_authorization_header", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_authorization_header, "Invalid authorization header"},
+             "Error details"
     end
 
-    test "should deny access if the bearer token is not a well formed JWT token", %{
+    test "denies access if the bearer token is not a well formed JWT token", %{
       default_opts: opts
     } do
       response =
@@ -135,17 +135,15 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_jwt_token", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_jwt_token, "Invalid JWT token"},
+             "Error details"
     end
   end
 
   describe "issuer" do
-    test "should deny access if the JWT token does not contain any issuer", %{
+    test "denies access if the JWT token does not contain any issuer", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.delete("iss")
@@ -157,15 +155,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "missing_iss_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:missing_iss_claim, "Missing iss claim"},
+             "Error details"
     end
 
-    test "should deny access if the iss claim does not match any registered issuer", %{
+    test "denies access if the iss claim does not match any registered issuer", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.put("iss", "issuer_3")
@@ -177,17 +173,15 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "unkown_issuer", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:unknown_issuer, "Unknown issuer"},
+             "Error details"
     end
   end
 
   describe "JWT signature" do
-    test "should allow access if the jwt token is signed by a secondary signature attached to the issuer",
+    test "allows access if the jwt token is signed by a secondary signature attached to the issuer",
          %{
            default_opts: opts
          } do
@@ -205,7 +199,7 @@ defmodule Neurow.JwtAuthPlugTest do
       assert response.assigns[:jwt_payload] == jwt_payload
     end
 
-    test "should deny access if the signature is not provided in the token", %{
+    test "denies access if the signature is not provided in the token", %{
       default_opts: opts
     } do
       [header, payload, _signature] =
@@ -220,15 +214,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_jwt_token", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_jwt_token, "Invalid JWT token"},
+             "Error details"
     end
 
-    test "should deny access if the signature is invalid", %{
+    test "denies access if the signature is invalid", %{
       default_opts: opts
     } do
       [header, payload, _signature] =
@@ -243,15 +235,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_signature", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_signature, "Invalid signature"},
+             "Error details"
     end
 
-    test "should deny access if the token is signed with another secret", %{
+    test "denies access if the token is signed with another secret", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload()
@@ -263,17 +253,15 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_signature", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_signature, "Invalid signature"},
+             "Error details"
     end
   end
 
   describe "token expiration" do
-    test "should deny access if no iat claim is provided", %{
+    test "denies access if no iat claim is provided", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.delete("iat")
@@ -285,15 +273,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_exp_iat_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_exp_iat_claim, "Invalid exp or iat claim"},
+             "Error details"
     end
 
-    test "should deny access if the iat claim is not a number", %{
+    test "denies access if the iat claim is not a number", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.put("iat", "not_a_number")
@@ -305,15 +291,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_exp_iat_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_exp_iat_claim, "Invalid exp or iat claim"},
+             "Error details"
     end
 
-    test "should deny access if no exp claim is provided", %{
+    test "denies access if no exp claim is provided", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.delete("exp")
@@ -325,15 +309,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_exp_iat_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_exp_iat_claim, "Invalid exp or iat claim"},
+             "Error details"
     end
 
-    test "should deny access if the exp claim is not a number", %{
+    test "denies access if the exp claim is not a number", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.put("exp", "not_a_number")
@@ -345,15 +327,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_exp_iat_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_exp_iat_claim, "Invalid exp or iat claim"},
+             "Error details"
     end
 
-    test "should deny access if the exp claim is not after the iat claim", %{
+    test "denies access if the exp claim is not after the iat claim", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload()
@@ -366,15 +346,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "invalid_exp_iat_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:invalid_exp_iat_claim, "Invalid exp or iat claim"},
+             "Error details"
     end
 
-    test "should deny access if the token expired", %{
+    test "denies access if the token expired", %{
       default_opts: opts
     } do
       jwt_payload =
@@ -389,15 +367,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "token_expired", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:token_expired, "Token expired"},
+             "Error details"
     end
 
-    test "should deny access if the token lifetime is higher than expected", %{
+    test "denies access if the token lifetime is higher than expected", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload()
@@ -414,17 +390,15 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "too_long_lifetime", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:too_long_lifetime, "Token lifetime is higher than allowed"},
+             "Error details"
     end
   end
 
   describe "token audience" do
-    test "should deny access if the aud claim is not provided", %{
+    test "denies access if the aud claim is not provided", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.delete("aud")
@@ -436,15 +410,13 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "missing_aud_claim", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:missing_aud_claim, "Missing aud claim"},
+             "Error details"
     end
 
-    test "should deny access if the aud claim does not match the expected audience", %{
+    test "denies access if the aud claim does not match the expected audience", %{
       default_opts: opts
     } do
       jwt_payload = valid_issuer_1_jwt_payload() |> Map.put("aud", "invalid_audience")
@@ -456,12 +428,10 @@ defmodule Neurow.JwtAuthPlugTest do
         )
 
       assert response.halted
-      assert 403 == response.status, "HTTP status"
 
-      assert {"content-type", "application/json"} in response.resp_headers,
-             "Response content type"
-
-      assert error_code(response) == "unknwon_audience", "Response body error code"
+      assert response.assigns[:forbidden_error] ==
+               {:unknwon_audience, "Unkown audience"},
+             "Error details"
     end
   end
 
@@ -476,10 +446,5 @@ defmodule Neurow.JwtAuthPlugTest do
       "aud" => @test_audience,
       "sub" => "record:123"
     }
-  end
-
-  defp error_code(response) do
-    {:ok, json_body} = Jason.decode(response.resp_body)
-    json_body["errors"] |> Enum.at(0) |> Map.get("error_code")
   end
 end

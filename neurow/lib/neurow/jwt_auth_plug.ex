@@ -9,6 +9,7 @@ defmodule Neurow.JwtAuthPlug do
       :audience,
       :max_lifetime,
       :inc_error_callback,
+      :send_forbidden,
       allowed_algorithm: "HS256",
       verbose_authentication_errors: false,
       exclude_path_prefixes: []
@@ -152,11 +153,11 @@ defmodule Neurow.JwtAuthPlug do
         if jwks != nil && !Enum.empty?(jwks) do
           {:ok, jwks}
         else
-          {:error, :unkown_issuer, "Unknown issuer"}
+          {:error, :unknown_issuer, "Unknown issuer"}
         end
 
       _ ->
-        {:error, :missing_iss_claim, "Mising iss claim"}
+        {:error, :missing_iss_claim, "Missing iss claim"}
     end
   end
 
@@ -172,7 +173,7 @@ defmodule Neurow.JwtAuthPlug do
 
     case valid_jwk do
       true -> {:ok}
-      false -> {:error, :invalid_signature, "Signature error"}
+      false -> {:error, :invalid_signature, "Invalid signature"}
     end
   end
 
@@ -181,7 +182,7 @@ defmodule Neurow.JwtAuthPlug do
       %JOSE.JWT{fields: %{"exp" => exp, "iat" => iat}}
       when is_integer(exp) and is_integer(iat) and exp > iat ->
         if exp - iat > options |> Options.max_lifetime() do
-          {:error, :too_long_lifetime, "Token lifetime is higher than expected"}
+          {:error, :too_long_lifetime, "Token lifetime is higher than allowed"}
         else
           if exp > :os.system_time(:second) do
             {:ok}
@@ -191,7 +192,7 @@ defmodule Neurow.JwtAuthPlug do
         end
 
       _ ->
-        {:error, :invalid_exp_iat_claim, "Bad exp or iat claim"}
+        {:error, :invalid_exp_iat_claim, "Invalid exp or iat claim"}
     end
   end
 
@@ -214,23 +215,16 @@ defmodule Neurow.JwtAuthPlug do
       "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience()} error: #{error_code} - #{error_message}"
     )
 
-    {:ok, response} =
-      Jason.encode(%{
-        errors: [
-          if options |> Options.verbose_authentication_errors?() do
-            %{error_code: error_code, error_message: error_message}
-          else
-            %{
-              error_code: "invalid_authentication_token",
-              error_message: "Invalid authentication token"
-            }
-          end
-        ]
-      })
+    conn =
+      if options |> Options.verbose_authentication_errors?(),
+        do: conn |> options.send_forbidden.(error_code, error_message),
+        else:
+          conn
+          |> options.send_forbidden.(
+            :invalid_authentication_token,
+            "Invalid authentication token"
+          )
 
-    conn
-    |> put_resp_header("content-type", "application/json")
-    |> resp(:forbidden, response)
-    |> halt
+    conn |> halt
   end
 end
