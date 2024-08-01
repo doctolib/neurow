@@ -80,7 +80,7 @@ defmodule Neurow.PublicApi do
       end
 
     response =
-      Jason.encode!(%{
+      :jiffy.encode(%{
         errors: [
           %{error_code: error_code, error_message: error_message}
         ]

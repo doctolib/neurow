@@ -33,8 +33,8 @@ defmodule Neurow.InternalApi.EndpointTest do
 
   describe "POST /v1/subscribe" do
     test "returns a 403 if called without a JWT token" do
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           message: %{event: "event_foo", payload: "foo56"},
           topic: "bar"
         })
@@ -47,8 +47,8 @@ defmodule Neurow.InternalApi.EndpointTest do
     end
 
     test "returns a 403 if called with an invalid JWT token" do
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
           topic: "bar"
         })
@@ -62,8 +62,8 @@ defmodule Neurow.InternalApi.EndpointTest do
     end
 
     test "returns a 400 error if the request payload is invalid" do
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           topic: "bar"
         })
 
@@ -72,7 +72,7 @@ defmodule Neurow.InternalApi.EndpointTest do
         |> put_jwt_token_in_req_header_internal_api()
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
-      {:ok, json_body} = Jason.decode(call.resp_body)
+      json_body = :jiffy.decode(call.resp_body, [:return_maps])
 
       assert call.status == 400
 
@@ -89,8 +89,8 @@ defmodule Neurow.InternalApi.EndpointTest do
     test "posts to only one topic if the 'topic' attribute is used" do
       :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, "test_issuer1-test-topic1")
 
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
           topic: "test-topic1"
         })
@@ -115,8 +115,8 @@ defmodule Neurow.InternalApi.EndpointTest do
       :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, "test_issuer1-test-topic1")
       :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, "test_issuer1-test-topic2")
 
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
           topics: ["test-topic1", "test-topic2"]
         })
@@ -147,8 +147,8 @@ defmodule Neurow.InternalApi.EndpointTest do
     test "posts multiple messages if the 'messages' attribute is used" do
       :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, "test_issuer1-test-topic1")
 
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           messages: [
             %{event: "event_foo", payload: "message 1", timestamp: 123_456},
             %{event: "event_bar", payload: "message 2", timestamp: 123_458}
@@ -186,8 +186,8 @@ defmodule Neurow.InternalApi.EndpointTest do
     test "provides a timestamp if the message timestamp is not provided in the request payload" do
       :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, "test_issuer1-test-topic1")
 
-      {:ok, body} =
-        Jason.encode(%{
+      body =
+        :jiffy.encode(%{
           messages: [
             %{event: "event_foo", payload: "message 1"},
             %{event: "event_bar", payload: "message 2"}

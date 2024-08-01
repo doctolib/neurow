@@ -2,10 +2,9 @@ defmodule Neurow.InternalApi.Message do
   defstruct [:event, :timestamp, :payload]
 
   def from_json(payload) when is_binary(payload) do
-    case Jason.decode(payload) do
-      {:ok, decoded_payload} -> {:ok, from_json(decoded_payload)}
-      error -> error
-    end
+    {:ok, from_json(:jiffy.decode(payload, [:return_maps]))}
+  rescue
+    exception -> {:error, exception}
   end
 
   def from_json(payload) when is_map(payload) do

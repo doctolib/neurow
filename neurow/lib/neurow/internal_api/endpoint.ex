@@ -20,7 +20,12 @@ defmodule Neurow.InternalApi.Endpoint do
   )
 
   plug(:match)
-  plug(Plug.Parsers, parsers: [:json], json_decoder: Jason)
+
+  plug(Plug.Parsers,
+    parsers: [:json],
+    json_decoder: {:jiffy, :decode, [[:return_maps]]}
+  )
+
   plug(:dispatch)
 
   get "/" do
@@ -65,7 +70,7 @@ defmodule Neurow.InternalApi.Endpoint do
 
     conn
     |> put_resp_header("content-type", "application/json")
-    |> send_resp(200, Jason.encode!(history))
+    |> send_resp(200, :jiffy.encode(history))
   end
 
   post "/v1/publish" do
@@ -94,7 +99,7 @@ defmodule Neurow.InternalApi.Endpoint do
         |> put_resp_header("content-type", "application/json")
         |> send_resp(
           200,
-          Jason.encode!(%{
+          :jiffy.encode(%{
             nb_published: nb_publish,
             publish_timestamp: publish_timestamp
           })
@@ -139,7 +144,7 @@ defmodule Neurow.InternalApi.Endpoint do
 
   defp send_error(conn, error_code, error_message, status \\ :bad_request) do
     response =
-      Jason.encode!(%{
+      :jiffy.encode(%{
         errors: [
           %{error_code: error_code, error_message: error_message}
         ]
