@@ -11,8 +11,8 @@ defmodule Neurow.HistoryIntegrationTest do
   end
 
   defp publish_message(payload, topic) do
-    {:ok, body} =
-      Jason.encode(%{
+    body =
+      :jiffy.encode(%{
         message: %{
           event: "test-event",
           payload: payload
@@ -32,7 +32,7 @@ defmodule Neurow.HistoryIntegrationTest do
 
     # Avoid to publish message in the same millisecond
     Process.sleep(2)
-    result = Jason.decode!(call.resp_body)
+    result = :jiffy.decode(call.resp_body, [:return_maps])
     result["publish_timestamp"]
   end
 
@@ -40,8 +40,7 @@ defmodule Neurow.HistoryIntegrationTest do
     conn = conn(:get, "/history/#{topic}")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
     assert call.status == 200
-    {:ok, body} = Jason.decode(call.resp_body)
-    body
+    :jiffy.decode(call.resp_body, [:return_maps])
   end
 
   defp drop_one_message() do

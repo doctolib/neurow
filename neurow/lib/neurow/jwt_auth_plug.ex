@@ -140,8 +140,7 @@ defmodule Neurow.JwtAuthPlug do
       payload = JOSE.JWT.peek_payload(jwt_token_str)
       {:ok, protected, payload}
     rescue
-      _ in Jason.DecodeError -> {:error, :invalid_jwt_token, "Invalid JWT token"}
-      _ in ArgumentError -> {:error, :invalid_jwt_token, "Invalid JWT token"}
+      _ -> {:error, :invalid_jwt_token, "Invalid JWT token"}
     end
   end
 

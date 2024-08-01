@@ -29,7 +29,7 @@ config :neurow,
 case config_env() do
   :prod ->
     {:ok, interservice_json_config} =
-      Jason.decode(System.fetch_env!("JWT_CONFIG"))
+      :jiffy.decode(System.fetch_env!("JWT_CONFIG"), [:return_maps])
 
     verbose_authentication_errors =
       (System.get_env("VERBOSE_AUTHENTICATION_ERRORS") || "false") == "true"
