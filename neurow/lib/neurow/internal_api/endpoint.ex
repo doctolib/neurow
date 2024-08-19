@@ -14,6 +14,7 @@ defmodule Neurow.InternalApi.Endpoint do
     verbose_authentication_errors:
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
+    send_forbidden: &Neurow.InternalApi.Endpoint.send_forbidden/3,
     inc_error_callback: &Stats.inc_jwt_errors_internal/0,
     exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above", "/history"]
   )
@@ -102,7 +103,7 @@ defmodule Neurow.InternalApi.Endpoint do
         )
 
       {:error, reason} ->
-        conn |> send_bad_request(:invalid_payload, reason)
+        conn |> send_error(:invalid_payload, reason)
     end
   end
 
@@ -134,9 +135,13 @@ defmodule Neurow.InternalApi.Endpoint do
     end
   end
 
-  defp send_bad_request(conn, error_code, error_message) do
-    {:ok, response} =
-      Jason.encode(%{
+  def send_forbidden(conn, error_code, error_message) do
+    send_error(conn, error_code, error_message, :forbidden)
+  end
+
+  defp send_error(conn, error_code, error_message, status \\ :bad_request) do
+    response =
+      Jason.encode!(%{
         errors: [
           %{error_code: error_code, error_message: error_message}
         ]
@@ -144,6 +149,6 @@ defmodule Neurow.InternalApi.Endpoint do
 
     conn
     |> put_resp_header("content-type", "application/json")
-    |> resp(:bad_request, response)
+    |> resp(status, response)
   end
 end

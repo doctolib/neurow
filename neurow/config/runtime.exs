@@ -4,21 +4,21 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   level: String.to_atom(System.get_env("LOG_LEVEL") || "info")
 
-config :neurow, public_api_port: String.to_integer(System.get_env("PUBLIC_API_PORT") || "4000")
-
+# Public API configuration
 config :neurow,
+  public_api_port: String.to_integer(System.get_env("PUBLIC_API_PORT") || "4000"),
   public_api_jwt_max_lifetime:
-    String.to_integer(System.get_env("PUBLIC_API_JWT_MAX_LIFETIME") || "120")
+    String.to_integer(System.get_env("PUBLIC_API_JWT_MAX_LIFETIME") || "120"),
+  public_api_allowed_origins: [~r/^https:\/\/.*\.doctolib\.(fr|it|de)(:3000)?$/],
+  public_api_preflight_max_age: String.to_integer(System.get_env("PREFLIGHT_MAX_AGE") || "86400"),
+  sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000"),
+  sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000")
 
+# Internal API configuration
 config :neurow,
-  internal_api_port: String.to_integer(System.get_env("INTERNAL_API_PORT") || "3000")
-
-config :neurow,
+  internal_api_port: String.to_integer(System.get_env("INTERNAL_API_PORT") || "3000"),
   internal_api_jwt_max_lifetime:
     String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "1500")
-
-config :neurow, sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000")
-config :neurow, sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000")
 
 config :neurow, ssl_keyfile: System.get_env("SSL_KEYFILE")
 config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
