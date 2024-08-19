@@ -25,4 +25,4 @@ jobs:
       - run: |
           aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/doctolib
           cd neurow
-          docker buildx build . --push -t public.ecr.aws/doctolib/neurow:latest -t public.ecr.aws/doctolib/neurow:latest -t public.ecr.aws/doctolib/neurow:${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
+          docker buildx build . --build-arg GIT_COMMIT_SHA1=${{ github.event.pull_request.head.sha || github.event.after || github.sha }} --push -t public.ecr.aws/doctolib/neurow:latest -t public.ecr.aws/doctolib/neurow:latest -t public.ecr.aws/doctolib/neurow:${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
