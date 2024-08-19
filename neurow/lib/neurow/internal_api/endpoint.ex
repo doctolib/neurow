@@ -23,7 +23,8 @@ defmodule Neurow.InternalApi.Endpoint do
   plug(Plug.Parsers, parsers: [:json], json_decoder: Jason)
   plug(:dispatch)
 
-  @revision System.get_env("GIT_COMMIT")
+  # Resolved at compile time
+  @revision System.get_env("GIT_COMMIT_SHA1")
 
   get "/" do
     conn
