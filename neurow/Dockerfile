@@ -3,7 +3,7 @@ ARG BUILDER_IMAGE=elixir:1.17-slim
 FROM ${BUILDER_IMAGE} AS builder
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git ca-certificates \
+  && apt-get install -y --no-install-recommends git build-essential ca-certificates \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 

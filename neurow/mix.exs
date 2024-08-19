@@ -27,7 +27,7 @@ defmodule Neurow.MixProject do
       {:prometheus_ex, "~> 3.1"},
       {:prometheus_plugs, "~> 1.0"},
       {:jose, "~> 1.11"},
-      {:jason, "~> 1.4"}
+      {:jiffy, "~> 1.1"}
     ]
   end
 end

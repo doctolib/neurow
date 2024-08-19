@@ -61,6 +61,8 @@ defmodule Neurow.Application do
     MetricsPlugExporter.setup()
     Stats.setup()
 
+    JOSE.json_module(:jiffy)
+
     opts = [strategy: :one_for_one, name: Neurow.Supervisor]
     Supervisor.start_link(add_cluster_supervisor(children), opts)
   end

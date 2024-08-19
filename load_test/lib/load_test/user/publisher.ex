@@ -88,8 +88,8 @@ defmodule LoadTest.User.Publisher do
       "publisher_#{state.user_name}: Publishing #{inspect(raw_message)}, remaining #{length(messages)}"
     end)
 
-    {:ok, body} =
-      Jason.encode(%{
+    body =
+      :jiffy.encode(%{
         topic: state.topic,
         message: %{
           event: "load_test_event",
