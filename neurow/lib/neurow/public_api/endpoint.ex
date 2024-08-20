@@ -1,4 +1,4 @@
-defmodule Neurow.PublicApi do
+defmodule Neurow.PublicApi.Endpoint do
   require Logger
   import Plug.Conn
   use Plug.Router
@@ -10,7 +10,7 @@ defmodule Neurow.PublicApi do
   plug(Neurow.JwtAuthPlug,
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
     audience: &Neurow.Configuration.public_api_audience/0,
-    send_forbidden: &Neurow.PublicApi.send_forbidden/3,
+    send_forbidden: &Neurow.PublicApi.Endpoint.send_forbidden/3,
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
