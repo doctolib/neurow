@@ -95,7 +95,7 @@ defmodule Neurow.PublicApi.Endpoint do
       |> put_resp_header("cache-control", "no-cache")
       |> put_resp_header("connection", "close")
       |> send_chunked(:forbidden)
-      |> chunk("id:#{now}\nevent: neurow_error_forbidden\ndata:#{response}\n\n")
+      |> chunk("id:#{now}\nevent: neurow_error_forbidden\ndata: #{response}\n\n")
 
     conn
   end
