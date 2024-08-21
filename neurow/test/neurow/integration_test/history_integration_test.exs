@@ -2,7 +2,6 @@ defmodule Neurow.IntegrationTests.HistoryIntegrationTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
-  import SseHelper
 
   setup do
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
@@ -130,50 +129,6 @@ defmodule Neurow.IntegrationTests.HistoryIntegrationTest do
     assert_history("test_issuer1-bar", ["foo56"])
   end
 
-  test "no history no headers" do
-    request_id = subscribe("bar")
-
-    assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
-      next_message()
-    end
-
-    :ok = :httpc.cancel_request(request_id)
-  end
-
-  test "no history with headers" do
-    request_id = subscribe("bar", [{["Last-Event-ID"], "3"}])
-
-    assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
-      next_message()
-    end
-
-    :ok = :httpc.cancel_request(request_id)
-  end
-
-  test "last event id is a string" do
-    request_id = send_subscribe("bar", [{["Last-Event-ID"], "xxx"}])
-
-    receive do
-      {:http, {_, {{_, 400, _}, _, body}}} ->
-        sse_event = parse_sse_json_event(body)
-        assert sse_event.event == "neurow_error_bad_request"
-
-        assert sse_event.data == %{
-                 "errors" => [
-                   %{
-                     "error_code" => "invalid_last_event_id",
-                     "error_message" => "Wrong value for last-event-id"
-                   }
-                 ]
-               }
-
-      msg ->
-        raise("Unexpected message: #{msg}")
-    end
-
-    :ok = :httpc.cancel_request(request_id)
-  end
-
   test "last-event-id" do
     first_id = publish_message("foo56", "bar")
     second_id = publish_message("foo57", "bar")
@@ -214,26 +169,6 @@ defmodule Neurow.IntegrationTests.HistoryIntegrationTest do
     assert output ==
              "id: #{first_id}\nevent: test-event\ndata: foo56\n\nid: #{second_id}\nevent: test-event\ndata: foo57\n\n"
 
-    :ok = :httpc.cancel_request(request_id)
-  end
-
-  test "last-event-id multiple" do
-    ids =
-      Enum.map(0..100, fn chunk ->
-        publish_message("message #{chunk}", "bar")
-      end)
-
-    start = 11
-    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(Enum.at(ids, start))}])
-    output = all_messages()
-
-    expected =
-      Enum.reduce_while(12..100, "", fn chunk, acc ->
-        {:cont,
-         acc <> "id: #{Enum.at(ids, chunk)}\nevent: test-event\ndata: message #{chunk}\n\n"}
-      end)
-
-    assert output == expected
     :ok = :httpc.cancel_request(request_id)
   end
 

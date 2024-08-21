@@ -13,6 +13,11 @@ defmodule SseHelper do
     end
   end
 
+  #
+  # Allow to test interaction with a SSE request by:
+  # - Calling the plug endpoint in a children task,
+  # - Intercepts calls to `send_chunk` and `chunk` from the application plugs to send messages to the test process
+  #
   def call_sse(plug_endpoint, conn, assertion_fn, options \\ []) do
     instrumented_conn = conn |> instrument()
     call_task = Task.async(fn -> plug_endpoint.call(instrumented_conn, options) end)
@@ -25,8 +30,8 @@ defmodule SseHelper do
     String.split(resp_body, "\n")
     |> Enum.reject(fn line -> String.length(String.trim(line)) == 0 end)
     |> Enum.map(fn line ->
-      [key, value] = String.split(line, ":", parts: 2)
-      {String.to_atom(key), String.trim(value)}
+      [key, value] = String.split(line, ~r/\: ?/, parts: 2)
+      {String.to_atom(key), value}
     end)
     |> Enum.into(%{})
   end

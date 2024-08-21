@@ -1,4 +1,5 @@
 defmodule Neurow.PublicApi.EndpointTest do
+  alias ExUnit.AssertionError
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
@@ -97,46 +98,17 @@ defmodule Neurow.PublicApi.EndpointTest do
                }
       end)
     end
+  end
 
-    test "transmits message history on subscription if the Last-Event-Id is sent" do
-      conn =
-        conn(:get, "/v1/subscribe")
-        |> put_req_header(
-          "authorization",
-          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
-        )
-        |> put_req_header(
-          "last-event-id",
-          "5"
-        )
-
-      publish_message("test_issuer1-test_topic1", 1, "Message ID1")
-      publish_message("test_issuer1-test_topic1", 5, "Message ID5")
-      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
-      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
-      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
-
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_chunked, 200}
-
-        assert_receive {:chunk, message_id6}
-        assert_receive {:chunk, message_id8}
-
-        assert parse_sse_event(message_id6) == %{
-                 id: "6",
-                 event: "test-event",
-                 data: "Message ID6"
-               }
-
-        assert parse_sse_event(message_id8) == %{
-                 id: "8",
-                 event: "test-event",
-                 data: "Message ID8"
-               }
-      end)
+  describe "history" do
+    setup do
+      GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+      GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+      Process.sleep(20)
+      :ok
     end
 
-    test "returns a bad request error if the Last-Event_Id header is invalid" do
+    test "returns a bad request error if the Last-Event_Id header is not an integer" do
       conn =
         conn(:get, "/v1/subscribe")
         |> put_req_header(
@@ -163,6 +135,199 @@ defmodule Neurow.PublicApi.EndpointTest do
                    }
                  ]
                }
+
+        assert_receive {:DOWN, _reference, :process, _pid, :normal}, 2_000
+      end)
+    end
+
+    test "does not return any history is the last-event-id header is not set" do
+      publish_message("test_issuer1-test_topic1", 2, "Message ID2")
+      publish_message("test_issuer1-test_topic1", 5, "Message ID5")
+      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
+
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_no_more_chunk()
+      end)
+    end
+
+    test "does not return any message if the last-event-id is set but the topic does not have any history" do
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "3"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_no_more_chunk()
+      end)
+    end
+
+    test "returns the full history if the last-event-id is lower than the oldest message" do
+      publish_message("test_issuer1-test_topic1", 1, "Message ID1")
+      publish_message("test_issuer1-test_topic1", 5, "Message ID5")
+      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
+
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "0"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_receive {:chunk, message_id2}
+        assert_receive {:chunk, message_id5}
+        assert_receive {:chunk, message_id6}
+        assert_receive {:chunk, message_id8}
+
+        event_id2 = parse_sse_event(message_id2)
+        event_id5 = parse_sse_event(message_id5)
+        event_id6 = parse_sse_event(message_id6)
+        event_id8 = parse_sse_event(message_id8)
+
+        assert event_id2.id == "1"
+        assert event_id5.id == "5"
+        assert event_id6.id == "6"
+        assert event_id8.id == "8"
+
+        assert event_id2.data == "Message ID1"
+        assert event_id5.data == "Message ID5"
+        assert event_id6.data == "Message ID6"
+        assert event_id8.data == "Message ID8"
+
+        assert_no_more_chunk()
+      end)
+    end
+
+    test "returns an empty history if the last-event-id is higher or equal to the latest message" do
+      publish_message("test_issuer1-test_topic1", 1, "Message ID1")
+      publish_message("test_issuer1-test_topic1", 5, "Message ID5")
+      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
+
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "8"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+        assert_no_more_chunk()
+      end)
+    end
+
+    test "return a partial history if the last-event-id is in the middle of the available messages" do
+      publish_message("test_issuer1-test_topic1", 1, "Message ID1")
+      publish_message("test_issuer1-test_topic1", 5, "Message ID5")
+      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
+
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "5"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_receive {:chunk, message_id6}
+        assert_receive {:chunk, message_id8}
+
+        assert parse_sse_event(message_id6) == %{
+                 id: "6",
+                 event: "test-event",
+                 data: "Message ID6"
+               }
+
+        assert parse_sse_event(message_id8) == %{
+                 id: "8",
+                 event: "test-event",
+                 data: "Message ID8"
+               }
+      end)
+    end
+
+    test "returns the requested history, then returns ongoing messages" do
+      publish_message("test_issuer1-test_topic1", 1, "Message ID1")
+      publish_message("test_issuer1-test_topic1", 2, "Message ID5")
+      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
+
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "6"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_receive {:chunk, message_id8}
+
+        assert parse_sse_event(message_id8) == %{
+                 id: "8",
+                 event: "test-event",
+                 data: "Message ID8"
+               }
+
+        publish_message("test_issuer1-other_topic", 50, "This message is not expected")
+        publish_message("test_issuer1-test_topic1", 42, "Message ID42")
+
+        assert_receive {:chunk, message_id42}
+
+        assert parse_sse_event(message_id42) == %{
+                 id: "42",
+                 event: "test-event",
+                 data: "Message ID42"
+               }
       end)
     end
   end
@@ -179,7 +344,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
       call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
-        assert_receive {:DOWN, _reference, :process, _pid, :normal}, 20_000
+        assert_receive {:DOWN, _reference, :process, _pid, :normal}, 2_000
       end)
     end
 
@@ -194,10 +359,15 @@ defmodule Neurow.PublicApi.EndpointTest do
 
       call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
-        assert_receive {:chunk, body}, 20_000
-        event = parse_sse_event(body)
+        assert_receive {:chunk, body_1}, 2_000
+        event_1 = parse_sse_event(body_1)
 
-        assert event.event == "ping"
+        assert event_1.event == "ping"
+
+        assert_receive {:chunk, body_2}, 2_000
+        event_2 = parse_sse_event(body_2)
+
+        assert event_2.event == "ping"
       end)
     end
   end
@@ -260,6 +430,12 @@ defmodule Neurow.PublicApi.EndpointTest do
       assert {"access-control-max-age",
               Integer.to_string(Application.fetch_env!(:neurow, :public_api_preflight_max_age))} in response.resp_headers,
              "access-control-max-age response header"
+    end
+  end
+
+  defp assert_no_more_chunk do
+    assert_raise AssertionError, ~r/The process mailbox is empty./, fn ->
+      assert_receive {:chunk, _}
     end
   end
 
