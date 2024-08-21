@@ -2,7 +2,7 @@ defmodule Neurow.PublicApi.EndpointTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
-  import SsePlugTester
+  import SseHelper
 
   describe "authentication" do
     test "denies access if no JWT token is provided" do
@@ -98,21 +98,107 @@ defmodule Neurow.PublicApi.EndpointTest do
       end)
     end
 
-    test "transmits message history if the Last-Event-Id is sent" do
+    test "transmits message history on subscription if the Last-Event-Id is sent" do
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "5"
+        )
+
+      publish_message("test_issuer1-test_topic1", 1, "Message ID1")
+      publish_message("test_issuer1-test_topic1", 5, "Message ID5")
+      publish_message("test_issuer1-test_topic1", 6, "Message ID6")
+      publish_message("test_issuer1-other_topic", 7, "This message is not expected")
+      publish_message("test_issuer1-test_topic1", 8, "Message ID8")
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_receive {:chunk, message_id6}
+        assert_receive {:chunk, message_id8}
+
+        assert parse_sse_event(message_id6) == %{
+                 id: "6",
+                 event: "test-event",
+                 data: "Message ID6"
+               }
+
+        assert parse_sse_event(message_id8) == %{
+                 id: "8",
+                 event: "test-event",
+                 data: "Message ID8"
+               }
+      end)
     end
 
     test "returns a bad request error if the Last-Event_Id header is invalid" do
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header(
+          "last-event-id",
+          "bad_message_id"
+        )
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 400}
+        assert_receive {:chunk, body}
+        event = parse_sse_json_event(body)
+
+        assert event.event == "neurow_error_bad_request"
+
+        assert event.data == %{
+                 "errors" => [
+                   %{
+                     "error_code" => "invalid_last_event_id",
+                     "error_message" => "Wrong value for last-event-id"
+                   }
+                 ]
+               }
+      end)
     end
   end
 
   describe "SSE lifecycle" do
     test "the client is disconnected after inactivity" do
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header("x-sse-timeout", "500")
+
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+        assert_receive {:DOWN, _reference, :process, _pid, :normal}, 20_000
+      end)
     end
 
     test "a ping event is sent every 'keep_alive' interval" do
-    end
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+        |> put_req_header("x-sse-keepalive", "500")
 
-    test "the client receives a `reconnect` event and is disconnected when the server needs to stop" do
+      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+        assert_receive {:chunk, body}, 20_000
+        event = parse_sse_event(body)
+
+        assert event.event == "ping"
+      end)
     end
   end
 
@@ -179,34 +265,10 @@ defmodule Neurow.PublicApi.EndpointTest do
 
   defp publish_message(topic, id, message) do
     :ok =
-      Phoenix.PubSub.broadcast!(
-        Neurow.PubSub,
-        topic,
-        {:pubsub_message,
-         %Neurow.InternalApi.Message{event: "test-event", timestamp: id, payload: message}}
-      )
-  end
-
-  defp parse_sse_event(resp_body) do
-    [id_line, event_line, data_line | _] = String.split(resp_body, "\n")
-
-    %{
-      id: String.slice(id_line, String.length("id: "), String.length(id_line)),
-      event: String.slice(event_line, String.length("event: "), String.length(event_line)),
-      data: String.slice(data_line, String.length("data: "), String.length(data_line))
-    }
-  end
-
-  defp parse_sse_json_event(resp_body) do
-    sse_event = parse_sse_event(resp_body)
-
-    %{
-      sse_event
-      | data:
-          :jiffy.decode(
-            sse_event[:data],
-            [:return_maps]
-          )
-    }
+      Neurow.ReceiverShardManager.broadcast(topic, %Neurow.InternalApi.Message{
+        event: "test-event",
+        payload: message,
+        timestamp: id
+      })
   end
 end

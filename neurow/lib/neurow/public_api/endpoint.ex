@@ -53,7 +53,12 @@ defmodule Neurow.PublicApi.Endpoint do
 
         case last_event_id do
           :error ->
-            conn |> resp(:bad_request, "Wrong value for last-event-id")
+            conn
+            |> send_http_error(
+              :bad_request,
+              :invalid_last_event_id,
+              "Wrong value for last-event-id"
+            )
 
           _ ->
             conn = send_chunked(conn, 200)
@@ -73,6 +78,10 @@ defmodule Neurow.PublicApi.Endpoint do
   end
 
   def send_forbidden(conn, error_code, error_message) do
+    send_http_error(conn, :forbidden, error_code, error_message)
+  end
+
+  def send_http_error(conn, http_status, error_code, error_message) do
     origin =
       case conn |> get_req_header("origin") do
         [origin] -> origin
@@ -94,8 +103,8 @@ defmodule Neurow.PublicApi.Endpoint do
       |> put_resp_header("access-control-allow-origin", origin)
       |> put_resp_header("cache-control", "no-cache")
       |> put_resp_header("connection", "close")
-      |> send_chunked(:forbidden)
-      |> chunk("id:#{now}\nevent: neurow_error_forbidden\ndata: #{response}\n\n")
+      |> send_chunked(http_status)
+      |> chunk("id:#{now}\nevent: neurow_error_#{http_status}\ndata: #{response}\n\n")
 
     conn
   end

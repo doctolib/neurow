@@ -1,4 +1,4 @@
-defmodule SsePlugTester do
+defmodule SseHelper do
   import ExUnit.Assertions
 
   defmodule PlugAdapter do
@@ -21,12 +21,35 @@ defmodule SsePlugTester do
     Task.shutdown(call_task)
   end
 
+  def parse_sse_event(resp_body) do
+    String.split(resp_body, "\n")
+    |> Enum.reject(fn line -> String.length(String.trim(line)) == 0 end)
+    |> Enum.map(fn line ->
+      [key, value] = String.split(line, ":", parts: 2)
+      {String.to_atom(key), String.trim(value)}
+    end)
+    |> Enum.into(%{})
+  end
+
+  def parse_sse_json_event(resp_body) do
+    sse_event = parse_sse_event(resp_body)
+
+    %{
+      sse_event
+      | data:
+          :jiffy.decode(
+            sse_event[:data],
+            [:return_maps]
+          )
+    }
+  end
+
   defp instrument(conn) do
     conn_state = conn.adapter |> elem(1)
 
     %Plug.Conn{
       conn
-      | adapter: {SsePlugTester.PlugAdapter, conn_state}
+      | adapter: {SseHelper.PlugAdapter, conn_state}
     }
   end
 end

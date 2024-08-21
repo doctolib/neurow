@@ -2,6 +2,7 @@ defmodule Neurow.IntegrationTests.HistoryIntegrationTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
+  import SseHelper
 
   setup do
     GenServer.call(Neurow.ReceiverShardManager, {:rotate})
@@ -153,8 +154,21 @@ defmodule Neurow.IntegrationTests.HistoryIntegrationTest do
     request_id = send_subscribe("bar", [{["Last-Event-ID"], "xxx"}])
 
     receive do
-      {:http, {_, {{_, 400, _}, _, "Wrong value for last-event-id"}}} -> :ok
-      msg -> raise("Unexpected message: #{msg}")
+      {:http, {_, {{_, 400, _}, _, body}}} ->
+        sse_event = parse_sse_json_event(body)
+        assert sse_event.event == "neurow_error_bad_request"
+
+        assert sse_event.data == %{
+                 "errors" => [
+                   %{
+                     "error_code" => "invalid_last_event_id",
+                     "error_message" => "Wrong value for last-event-id"
+                   }
+                 ]
+               }
+
+      msg ->
+        raise("Unexpected message: #{msg}")
     end
 
     :ok = :httpc.cancel_request(request_id)
