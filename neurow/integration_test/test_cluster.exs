@@ -92,11 +92,11 @@ defmodule Neurow.IntegrationTest.TestCluster do
     Logger.warn("Starting Neurow node #{node_name} ...")
 
     # -- Start a new Erlang node --
-    {:ok, _pid, node} =
+    {:ok, pid, node} =
       :peer.start_link(%{name: node_name, connection: :standard_io})
 
     if Node.ping(node) == :pang do
-      Logger.warn("Current node status: #{Node.alive?()}, state: #{:peer.get_state(node)}")
+      Logger.warn("Current node status: #{Node.alive?()}, state: #{:peer.get_state(pid)}")
       raise "Cannot contact the #{node}"
     end
 
