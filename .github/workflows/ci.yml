@@ -15,6 +15,7 @@ jobs:
       - run: cd neurow && mix format --check-formatted
       - run: cd neurow && mix deps.get
       - run: cd neurow && mix compile --warnings-as-errors
+      - run: epmd -daemon
       - run: cd neurow && mix test
 
   ci-loadtest:
