@@ -7,8 +7,20 @@ defmodule Neurow.MixProject do
       version: "0.1.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      test_paths: [
+        "test",
+        "integration_test"
+      ],
+      aliases: [
+        "test.unit": "test test",
+        "test.integration": "test --no-start integration_test"
+      ]
     ]
+  end
+
+  def cli do
+    [preferred_envs: ["test.unit": :test, "test.integration": :test]]
   end
 
   def application do
@@ -27,7 +39,8 @@ defmodule Neurow.MixProject do
       {:prometheus_ex, "~> 3.1"},
       {:prometheus_plugs, "~> 1.0"},
       {:jose, "~> 1.11"},
-      {:jiffy, "~> 1.1"}
+      {:jiffy, "~> 1.1"},
+      {:local_cluster, "~> 1.2", only: [:test]}
     ]
   end
 end

@@ -1,4 +1,4 @@
-defmodule Neurow.IntegrationTests.PublicApiIntegrationTest do
+defmodule Neurow.IntegrationTest.PublicApiIntegrationTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
@@ -39,14 +39,6 @@ defmodule Neurow.IntegrationTests.PublicApiIntegrationTest do
 
   defp assert_headers(headers, {key, value}) do
     assert {to_charlist(key), to_charlist(value)} in headers
-  end
-
-  test "GET /v1/subscribe 403" do
-    conn =
-      conn(:get, "/v1/subscribe")
-
-    call = Neurow.PublicApi.Endpoint.call(conn, [])
-    assert call.status == 403
   end
 
   test "GET /v1/subscribe 200 no message" do

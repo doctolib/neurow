@@ -1,4 +1,4 @@
-defmodule Neurow.IntegrationTests.HistoryIntegrationTest do
+defmodule Neurow.IntegrationTest.HistoryIntegrationTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
