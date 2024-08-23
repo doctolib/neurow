@@ -15,7 +15,7 @@ defmodule Neurow.Application do
     {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
 
     cluster_topologies =
-      Application.get_env(:neurow, :cluster_topologies, cluster_topologies())
+      Application.get_env(:neurow, :cluster_topologies, cluster_topologies_from_env_variables())
 
     start(%{
       public_api_port: public_api_port,
@@ -77,7 +77,11 @@ defmodule Neurow.Application do
         {Neurow.ReceiverShardManager, [history_min_duration]}
       ] ++
         Neurow.ReceiverShardManager.create_receivers() ++
-        [{Cluster.Supervisor, [cluster_topologies, [name: Neurow.ClusterSupervisor]]}]
+        if cluster_topologies do
+          [{Cluster.Supervisor, [cluster_topologies, [name: Neurow.ClusterSupervisor]]}]
+        else
+          []
+        end
 
     MetricsPlugExporter.setup()
     Stats.setup()
@@ -88,7 +92,7 @@ defmodule Neurow.Application do
     Supervisor.start_link(children, opts)
   end
 
-  defp cluster_topologies do
+  defp cluster_topologies_from_env_variables do
     cond do
       System.get_env("K8S_SELECTOR") && System.get_env("K8S_NAMESPACE") ->
         Logger.info(
