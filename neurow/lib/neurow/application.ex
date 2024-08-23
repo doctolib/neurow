@@ -72,7 +72,7 @@ defmodule Neurow.Application do
          scheme: :http, plug: Neurow.InternalApi.Endpoint, options: [port: internal_api_port]},
         {Plug.Cowboy,
          scheme: sse_http_scheme, plug: Neurow.PublicApi.Endpoint, options: public_api_http_config},
-        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
+        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.Endpoint], shutdown: 20_000},
         {StopListener, []},
         {Neurow.ReceiverShardManager, [history_min_duration]}
       ] ++
