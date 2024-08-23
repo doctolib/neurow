@@ -92,7 +92,12 @@ defmodule Neurow.IntegrationTest.TestCluster do
     Logger.warn("Starting Neurow node #{node_name} ...")
 
     # -- Start a new Erlang node --
-    {:ok, _pid, node} = :peer.start_link(%{name: node_name, connection: :standard_io})
+    {:ok, _pid, node} =
+      :peer.start_link(%{name: node_name, connection: :standard_io})
+
+    if Node.ping(node) == :pang do
+      raise "Cannot contact the #{node}"
+    end
 
     # -- Add the Elixir & Neurow code in the Erlang VM --
     :ok = :rpc.call(node, :code, :add_paths, [:code.get_path()])
@@ -142,7 +147,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
         :neurow,
         :cluster_topologies,
         [
-          neurow: [
+          gossip: [
             strategy: Cluster.Strategy.Gossip
           ]
         ]
