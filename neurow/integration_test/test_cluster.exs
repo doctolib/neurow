@@ -96,6 +96,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
       :peer.start_link(%{name: node_name, connection: :standard_io})
 
     if Node.ping(node) == :pang do
+      Logger.warn("Current node status: #{Node.alive?()}")
       raise "Cannot contact the #{node}"
     end
 
