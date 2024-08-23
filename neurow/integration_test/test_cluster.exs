@@ -6,38 +6,24 @@ defmodule Neurow.IntegrationTest.TestCluster do
   # -- Public API --
 
   #
-  # Just start the TestCluster GenServer, at this step nodes in the cluster are not started yet
+  # Just starts the TestCluster GenServer, at this step nodes in the cluster are not started yet
   #
   def start(options \\ %{}) do
     GenServer.start_link(__MODULE__, options, name: __MODULE__)
   end
 
   #
-  # Start Neurow test nodes in the cluster, according to the TestCluster configuration
+  # Starts Neurow test nodes in the cluster, according to the TestCluster configuration
   #
   def start_nodes do
     GenServer.call(__MODULE__, :start_nodes, 20_000)
   end
 
   #
-  # Return ports of all the public API
+  # Returns a summary of the cluster state that can be injected in tests
   #
-  def public_api_ports do
-    GenServer.call(__MODULE__, :public_api_ports)
-  end
-
-  #
-  # Return ports of all the internal public API
-  #
-  def internal_api_ports do
-    GenServer.call(__MODULE__, :internal_api_ports)
-  end
-
-  #
-  # Return the number of neurow nodes in the cluster
-  #
-  def cluster_size do
-    GenServer.call(__MODULE__, :cluster_size)
+  def cluster_state do
+    GenServer.call(__MODULE__, :cluster_state)
   end
 
   # -- GenServer callbacks, should not be used directly --
@@ -78,21 +64,20 @@ defmodule Neurow.IntegrationTest.TestCluster do
     end
   end
 
-  def handle_call(:public_api_ports, _from, state) do
+  def handle_call(:cluster_state, _from, state) do
     {:reply,
-     Enum.map(state.nodes, fn {_node, public_api_port, _internal_api_port} -> public_api_port end),
-     state}
-  end
-
-  def handle_call(:internal_api_ports, _from, state) do
-    {:reply,
-     Enum.map(state.nodes, fn {_node, _public_api_port, internal_api_port} ->
-       internal_api_port
-     end), state}
-  end
-
-  def handle_call(:cluster_size, _from, state) do
-    {:reply, length(state.nodes), state}
+     %{
+       started: state.started,
+       cluster_size: length(state.nodes),
+       public_api_ports:
+         Enum.map(state.nodes, fn {_node, public_api_port, _internal_api_port} ->
+           public_api_port
+         end),
+       internal_api_ports:
+         Enum.map(state.nodes, fn {_node, _public_api_port, internal_api_port} ->
+           internal_api_port
+         end)
+     }, state}
   end
 
   #
