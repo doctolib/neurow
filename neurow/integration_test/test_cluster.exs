@@ -27,7 +27,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
   end
 
   # -- GenServer callbacks, should not be used directly --
-
+  @impl true
   def init(options) do
     {:ok,
      %{
@@ -37,11 +37,12 @@ defmodule Neurow.IntegrationTest.TestCluster do
        internal_api_port_start: options[:internal_api_port_start] || 3010,
        public_api_port_start: options[:public_api_port_start] || 4010,
        history_min_duration: options[:history_min_duration] || 30,
-       # List of {node, public_api_port, internal_api_port}
+       # List of [{node, public_api_port, internal_api_port}]
        nodes: []
      }}
   end
 
+  @impl true
   def handle_call(:start_nodes, _from, state) do
     case state do
       %{started: true} ->
@@ -64,6 +65,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
     end
   end
 
+  @impl true
   def handle_call(:cluster_state, _from, state) do
     {:reply,
      %{
@@ -80,49 +82,42 @@ defmodule Neurow.IntegrationTest.TestCluster do
      }, state}
   end
 
+  @impl true
+  def terminate(_reason, state) do
+    state.nodes
+    |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
+      Logger.warning("Stopping node #{node}")
+      :peer.stop(node)
+    end)
+  end
+
   #
-  # Start a new neurow node,
-  # Inspired by https://github.com/whitfin/local-cluster/blob/main/lib/local_cluster.ex#L60
+  # Start a new Neurow node,
   #
   defp start_node(node_index, state) do
-    node_name = "#{state.node_prefix}#{node_index}"
+    node_name = ~c"#{state.node_prefix}#{node_index}"
     public_api_port = state.public_api_port_start + node_index
     internal_api_port = state.internal_api_port_start + node_index
 
-    Logger.warn("Starting Neurow node #{node_name} ...")
+    Logger.warning("Starting Neurow node #{node_name} ...")
 
     # -- Start a new Erlang node --
     {:ok, pid, node} =
-      :peer.start_link(%{name: node_name, connection: :standard_io})
+      :peer.start(%{name: node_name, host: ~c"localhost", connection: :standard_io})
 
     if Node.ping(node) == :pang do
-      Logger.warn("Current node status: #{Node.alive?()}, state: #{:peer.get_state(pid)}")
+      Logger.warning("Current node status: #{Node.alive?()}, state: #{:peer.get_state(pid)}")
       raise "Cannot contact the #{node}"
     end
 
-    # -- Add the Elixir & Neurow code in the Erlang VM --
+    # -- Add the Elixir & Neurow code to the Erlang VM --
     :ok = :rpc.call(node, :code, :add_paths, [:code.get_path()])
 
-    # -- Start and configure Mix and Logger --
+    # -- Start and configure Mix --
     {:ok, _} = :rpc.call(node, Application, :ensure_all_started, [:mix])
-    {:ok, _} = :rpc.call(node, Application, :ensure_all_started, [:logger])
-
-    :ok =
-      :rpc.call(node, Logger, :configure, [
-        [level: Logger.level(), format: "$time $metadata[$level] $message\n"]
-      ])
-
     :ok = :rpc.call(node, Mix, :env, [Mix.env()])
 
-    # -- Start all other libraries applications (jose, cowboy, ...) --
-    other_app_names =
-      Application.loaded_applications()
-      |> Enum.map(fn {app_name, _, _} -> app_name end)
-      |> Enum.reject(fn app_name -> app_name == :neurow end)
-
-    {:ok, _} = :rpc.call(node, Application, :ensure_all_started, [other_app_names])
-
-    # -- Start Neurow --
+    # -- Setup Neurow --
     # 1. Get the environement defined by "config/runtime.exs"
     {:ok, neurow_env} =
       :rpc.call(node, Config.Reader, :read!, [
@@ -154,10 +149,14 @@ defmodule Neurow.IntegrationTest.TestCluster do
         ]
       ])
 
-    # 4. And finally start Neurow \o/
-    {:ok, _} = :rpc.call(node, Application, :ensure_all_started, [:neurow])
+    # -- Start all the applications (Neurow, and the required libraries) --
+    Application.loaded_applications()
+    |> Enum.map(fn {app_name, _, _} -> app_name end)
+    |> Enum.each(fn app_name ->
+      {:ok, _} = :rpc.call(node, Application, :ensure_all_started, [app_name])
+    end)
 
-    Logger.warn("Neurow node #{node_name} started")
+    Logger.warning("Neurow node #{node_name} started")
 
     {node, public_api_port, internal_api_port}
   end
