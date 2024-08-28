@@ -40,7 +40,8 @@ defmodule Neurow.MixProject do
       {:prometheus_plugs, "~> 1.0"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 1.1"},
-      {:local_cluster, "~> 1.2", only: [:test]}
+      {:local_cluster, "~> 1.2", only: [:test]},
+      {:httpoison, "~> 2.0", only: [:test]}
     ]
   end
 end

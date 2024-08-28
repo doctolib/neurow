@@ -26,8 +26,8 @@ defmodule SseHelper do
     Task.shutdown(call_task)
   end
 
-  def parse_sse_event(resp_body) do
-    String.split(resp_body, "\n")
+  def parse_sse_event(sse_event_chunk) do
+    String.split(sse_event_chunk, "\n")
     |> Enum.reject(fn line -> String.length(String.trim(line)) == 0 end)
     |> Enum.map(fn line ->
       [key, value] = String.split(line, ~r/\: ?/, parts: 2)
@@ -36,8 +36,8 @@ defmodule SseHelper do
     |> Enum.into(%{})
   end
 
-  def parse_sse_json_event(resp_body) do
-    sse_event = parse_sse_event(resp_body)
+  def parse_sse_json_event(sse_event_chunk) do
+    sse_event = parse_sse_event(sse_event_chunk)
 
     %{
       sse_event
