@@ -23,11 +23,11 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       Enum.each(public_ports, fn public_port ->
         subscribe(public_port, "test_topic", fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200},
-                         1000,
+                         1_000,
                          "HTTP 200 on public port #{public_port}"
 
           assert_receive %HTTPoison.AsyncHeaders{headers: headers},
-                         1000,
+                         1_000,
                          "HTTP Headers on public port #{public_port}"
 
           assert_headers(headers, [
@@ -51,7 +51,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
 
             assert_receive(
               %HTTPoison.AsyncChunk{chunk: sse_event},
-              1000,
+              1_000,
               "SSE event from internal port #{internal_port} to public port #{public_port}"
             )
 
@@ -74,12 +74,18 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
             Task.async(fn ->
               subscribe(public_port, "test_topic", fn ->
                 assert_receive %HTTPoison.AsyncStatus{code: 200},
-                               1000,
+                               1_000,
                                "HTTP 200 on public port #{public_port}"
 
                 assert_receive %HTTPoison.AsyncHeaders{headers: headers},
-                               1000,
+                               1_000,
                                "HTTP Headers on public port #{public_port}"
+
+                assert_receive(
+                  %HTTPoison.AsyncChunk{chunk: sse_event},
+                  1_000,
+                  "SSE event on public port #{public_port}"
+                )
 
                 assert_headers(headers, [
                   {"access-control-allow-origin", "*"},
@@ -88,12 +94,6 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
                   {"content-type", "text/event-stream"},
                   {"transfer-encoding", "chunked"}
                 ])
-
-                assert_receive(
-                  %HTTPoison.AsyncChunk{chunk: sse_event},
-                  2000,
-                  "SSE event on public port #{public_port}"
-                )
 
                 assert_sse_event(sse_event, "multisubscriber_event", "Hello to all subscribers")
               end)
@@ -108,7 +108,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       })
 
       # Wait that all subscribe tasks end
-      subscribe_tasks |> Enum.each(&Task.await/1)
+      subscribe_tasks |> Enum.each(fn task -> Task.await(task, 10_000) end)
     end
   end
 
@@ -124,10 +124,12 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
   end
 
   defp subscribe(port, topic, assert_fn) do
-    headers = [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"]
-    async_response = HTTPoison.get!(subscribe_url(port), headers, stream_to: self())
-    assert_fn.()
-    :hackney.stop_async(async_response.id)
+    Task.start_link(fn ->
+      headers = [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"]
+      async_response = HTTPoison.get!(subscribe_url(port), headers, stream_to: self())
+      assert_fn.()
+      :hackney.stop_async(async_response.id)
+    end)
   end
 
   def assert_headers(headers, expected_headers) do
