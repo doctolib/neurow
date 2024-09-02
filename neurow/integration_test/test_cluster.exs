@@ -15,8 +15,8 @@ defmodule Neurow.IntegrationTest.TestCluster do
   #
   # Starts Neurow test nodes in the cluster, according to the TestCluster configuration
   #
-  def start_nodes do
-    GenServer.call(__MODULE__, :start_nodes, 20_000)
+  def ensure_node_started do
+    GenServer.call(__MODULE__, :ensure_node_started, 20_000)
   end
 
   #
@@ -43,7 +43,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
   end
 
   @impl true
-  def handle_call(:start_nodes, _from, state) do
+  def handle_call(:ensure_node_started, _from, state) do
     case state do
       %{started: true} ->
         {:reply, :already_started, state}

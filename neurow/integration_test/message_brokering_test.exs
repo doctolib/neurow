@@ -7,7 +7,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
   import SseHelper
 
   setup do
-    Neurow.IntegrationTest.TestCluster.start_nodes()
+    Neurow.IntegrationTest.TestCluster.ensure_node_started()
     Application.ensure_all_started(:httpoison)
     HTTPoison.start()
     {:ok, cluster_state: Neurow.IntegrationTest.TestCluster.cluster_state()}
