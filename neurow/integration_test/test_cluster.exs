@@ -59,7 +59,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
           Enum.map(1..state.node_amount, fn index ->
             Task.async(fn -> start_node(index, state) end)
           end)
-          |> Enum.map(&Task.await/1)
+          |> Enum.map(fn task -> Task.await(task, 10_000) end)
 
         {:reply, :started, Map.put(%{state | started: true}, :nodes, nodes)}
     end

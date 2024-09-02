@@ -22,9 +22,13 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
     } do
       Enum.each(public_ports, fn public_port ->
         subscribe(public_port, "test_topic", fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
+          assert_receive %HTTPoison.AsyncStatus{code: 200},
+                         1000,
+                         "HTTP 200 on public port #{public_port}"
 
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+          assert_receive %HTTPoison.AsyncHeaders{headers: headers},
+                         1000,
+                         "HTTP Headers on public port #{public_port}"
 
           assert_headers(headers, [
             {"access-control-allow-origin", "*"},
@@ -44,10 +48,13 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
               event: "expected_event",
               payload: "Hello on port #{internal_port}"
             })
-          end)
 
-          Enum.each(internal_ports, fn internal_port ->
-            assert_receive %HTTPoison.AsyncChunk{chunk: sse_event}
+            assert_receive(
+              %HTTPoison.AsyncChunk{chunk: sse_event},
+              1000,
+              "SSE event from internal port #{internal_port} to public port #{public_port}"
+            )
+
             assert_sse_event(sse_event, "expected_event", "Hello on port #{internal_port}")
           end)
         end)
@@ -66,9 +73,13 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
           Enum.map(1..3, fn _index ->
             Task.async(fn ->
               subscribe(public_port, "test_topic", fn ->
-                assert_receive %HTTPoison.AsyncStatus{code: 200}
+                assert_receive %HTTPoison.AsyncStatus{code: 200},
+                               1000,
+                               "HTTP 200 on public port #{public_port}"
 
-                assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+                assert_receive %HTTPoison.AsyncHeaders{headers: headers},
+                               1000,
+                               "HTTP Headers on public port #{public_port}"
 
                 assert_headers(headers, [
                   {"access-control-allow-origin", "*"},
@@ -78,7 +89,12 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
                   {"transfer-encoding", "chunked"}
                 ])
 
-                assert_receive %HTTPoison.AsyncChunk{chunk: sse_event}
+                assert_receive(
+                  %HTTPoison.AsyncChunk{chunk: sse_event},
+                  2000,
+                  "SSE event on public port #{public_port}"
+                )
+
                 assert_sse_event(sse_event, "multisubscriber_event", "Hello to all subscribers")
               end)
             end)
