@@ -3,13 +3,13 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
 
   use ExUnit.Case
   use Plug.Test
-  import JwtHelper
+
   import SseHelper
+  alias SseHelper.HttpSse
 
   setup do
     Neurow.IntegrationTest.TestCluster.ensure_node_started()
-    Application.ensure_all_started(:httpoison)
-    HTTPoison.start()
+    HttpSse.ensure_started()
     {:ok, cluster_state: Neurow.IntegrationTest.TestCluster.cluster_state()}
   end
 
@@ -20,8 +20,10 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
         public_api_ports: public_ports
       }
     } do
+      # Nested loop on all public ports and internal ports to ensure that messages
+      # can be forwarded from all nodes to all nodes in the cluster
       Enum.each(public_ports, fn public_port ->
-        subscribe(public_port, "test_topic", fn ->
+        HttpSse.subscribe(public_port, "test_topic", fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200},
                          1_000,
                          "HTTP 200 on public port #{public_port}"
@@ -30,7 +32,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
                          1_000,
                          "HTTP Headers on public port #{public_port}"
 
-          assert_headers(headers, [
+          HttpSse.assert_headers(headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
@@ -39,14 +41,14 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
           ])
 
           Enum.each(internal_ports, fn internal_port ->
-            publish(internal_port, "other_topic", %{
+            HttpSse.publish(internal_port, "other_topic", %{
               event: "other_event",
               payload: "Should not be received"
             })
 
-            publish(internal_port, "test_topic", %{
+            HttpSse.publish(internal_port, "test_topic", %{
               event: "expected_event",
-              payload: "Hello on port #{internal_port}"
+              payload: "Hello from #{internal_port}"
             })
 
             assert_receive(
@@ -55,7 +57,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
               "SSE event from internal port #{internal_port} to public port #{public_port}"
             )
 
-            assert_sse_event(sse_event, "expected_event", "Hello on port #{internal_port}")
+            assert_sse_event(sse_event, "expected_event", "Hello from #{internal_port}")
           end)
         end)
       end)
@@ -72,7 +74,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
         Enum.flat_map(public_ports, fn public_port ->
           Enum.map(1..3, fn _index ->
             Task.async(fn ->
-              subscribe(public_port, "test_topic", fn ->
+              HttpSse.subscribe(public_port, "test_topic", fn ->
                 assert_receive %HTTPoison.AsyncStatus{code: 200},
                                1_000,
                                "HTTP 200 on public port #{public_port}"
@@ -87,7 +89,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
                   "SSE event on public port #{public_port}"
                 )
 
-                assert_headers(headers, [
+                HttpSse.assert_headers(headers, [
                   {"access-control-allow-origin", "*"},
                   {"cache-control", "no-cache"},
                   {"connection", "close"},
@@ -104,8 +106,8 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       # Wait that subscribers are actually attached before publishing the message
       :timer.sleep(1_000)
 
-      # Publish one single message on the internal API
-      publish(Enum.at(internal_ports, 0), "test_topic", %{
+      # Then publish one single message on the internal API of the first node
+      HttpSse.publish(Enum.at(internal_ports, 0), "test_topic", %{
         event: "multisubscriber_event",
         payload: "Hello to all subscribers"
       })
@@ -116,7 +118,56 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
   end
 
   describe "message publishing" do
-    test "delivers messages to multiple topics in one call to the internal API" do
+    test "delivers messages to multiple topics in one call to the internal API", %{
+      cluster_state: %{
+        internal_api_ports: internal_ports,
+        public_api_ports: public_ports
+      }
+    } do
+      # Start one subscriber on each node on its own topic
+      subscribe_tasks =
+        Enum.map(public_ports, fn public_port ->
+          Task.async(fn ->
+            HttpSse.subscribe(public_port, "test_topic:#{public_port}", fn ->
+              assert_receive %HTTPoison.AsyncStatus{code: 200},
+                             1_000,
+                             "HTTP 200 on public port #{public_port}"
+
+              assert_receive %HTTPoison.AsyncHeaders{},
+                             1_000,
+                             "HTTP Headers on public port #{public_port}"
+
+              Enum.each(internal_ports, fn internal_port ->
+                # Expect to receive a message published on each node
+                assert_receive(
+                  %HTTPoison.AsyncChunk{chunk: sse_event},
+                  2_000,
+                  "SSE event on public port #{public_port} from #{internal_port}"
+                )
+
+                assert_sse_event(sse_event, "multitopic_event", "Hello from #{internal_port}")
+              end)
+            end)
+          end)
+        end)
+
+      # Wait that subscribers are actually attached before publishing the message
+      :timer.sleep(1_000)
+
+      # Then, send messages on each node on each subscribed topic
+      Enum.each(internal_ports, fn internal_port ->
+        HttpSse.publish(
+          internal_port,
+          Enum.map(public_ports, fn public_port -> "test_topic:#{public_port}" end),
+          %{
+            event: "multitopic_event",
+            payload: "Hello from #{internal_port}"
+          }
+        )
+      end)
+
+      # Wait that all subscribe tasks end
+      subscribe_tasks |> Enum.each(fn task -> Task.await(task, 4_000) end)
     end
 
     test "delivers multiple messages to a single topic in one call to the internal API" do
@@ -124,74 +175,5 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
 
     test "delivers multiple messages to a mulitple topics in one call to the internal API" do
     end
-  end
-
-  defp subscribe(port, topic, assert_fn) do
-    Task.start_link(fn ->
-      headers = [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"]
-      async_response = HTTPoison.get!(subscribe_url(port), headers, stream_to: self())
-      assert_fn.()
-      :hackney.stop_async(async_response.id)
-    end)
-  end
-
-  def assert_headers(headers, expected_headers) do
-    expected_headers
-    |> Enum.map(fn expected_header ->
-      assert headers |> Enum.member?(expected_header),
-             "Expecting header #{inspect(expected_header)}"
-    end)
-  end
-
-  def assert_sse_event(sse_event, expected_event, expected_data, expected_id \\ nil) do
-    parsed_event = parse_sse_event(sse_event)
-
-    assert parsed_event.event == expected_event
-    assert parsed_event.data == expected_data
-
-    if expected_id != nil do
-      assert parsed_event.id == expected_id
-    end
-  end
-
-  defp publish_url(port), do: "http://localhost:#{port}/v1/publish"
-  defp subscribe_url(port), do: "http://localhost:#{port}/v1/subscribe"
-
-  defp publish(port, topics, messages) do
-    headers = [
-      Authorization: "Bearer #{compute_jwt_token_in_req_header_internal_api()}",
-      "content-type": "application/json"
-    ]
-
-    payload =
-      %{}
-      |> Map.merge(
-        case topics do
-          topics when is_list(topics) ->
-            %{topics: topics}
-
-          topic when is_binary(topic) ->
-            %{topic: topic}
-        end
-      )
-      |> Map.merge(
-        case messages do
-          messages when is_list(messages) ->
-            %{messages: messages}
-
-          %{event: event, payload: payload, id: id} ->
-            %{message: %{event: event, payload: payload, id: id}}
-
-          %{event: event, payload: payload} ->
-            %{message: %{event: event, payload: payload}}
-
-          _ ->
-            raise "Expecting %{event: event, payload: payload} or [%{event, payload, id?}]"
-        end
-      )
-
-    payload_str = :jiffy.encode(payload)
-
-    HTTPoison.post!(publish_url(port), payload_str, headers)
   end
 end

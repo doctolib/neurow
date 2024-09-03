@@ -5,12 +5,14 @@ defmodule Neurow.PublicApi.EndpointTest do
   import JwtHelper
   import SseHelper
 
+  alias SseHelper.PlugSse
+
   describe "authentication" do
     test "denies access if no JWT token is provided" do
       conn =
         conn(:get, "/v1/subscribe")
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 403}
         assert_receive {:chunk, body}
 
@@ -34,7 +36,7 @@ defmodule Neurow.PublicApi.EndpointTest do
         conn(:get, "/v1/subscribe")
         |> put_req_header("authorization", "Bearer bad_token")
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 403}
         assert_receive {:chunk, body}
         event = parse_sse_json_event(body)
@@ -60,7 +62,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "Bearer #{compute_jwt_token_in_req_header_public_api("foo56")}"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
       end)
     end
@@ -75,7 +77,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
         publish_message("test_issuer1-test_topic1", 1234, "First message")
@@ -120,7 +122,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "bad_message_id"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 400}
         assert_receive {:chunk, body}
         event = parse_sse_json_event(body)
@@ -154,7 +156,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
         assert_no_more_chunk()
@@ -175,7 +177,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "3"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
         assert_no_more_chunk()
@@ -200,7 +202,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "0"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
         assert_receive {:chunk, message_id2}
@@ -245,7 +247,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "8"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
         assert_no_more_chunk()
       end)
@@ -269,7 +271,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "5"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
         assert_receive {:chunk, message_id6}
@@ -307,7 +309,7 @@ defmodule Neurow.PublicApi.EndpointTest do
           "6"
         )
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
         assert_receive {:chunk, message_id8}
@@ -342,7 +344,7 @@ defmodule Neurow.PublicApi.EndpointTest do
         )
         |> put_req_header("x-sse-timeout", "500")
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
         assert_receive {:DOWN, _reference, :process, _pid, :normal}, 2_000
       end)
@@ -357,7 +359,7 @@ defmodule Neurow.PublicApi.EndpointTest do
         )
         |> put_req_header("x-sse-keepalive", "500")
 
-      call_sse(Neurow.PublicApi.Endpoint, conn, fn ->
+      PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
         assert_receive {:chunk, body_1}, 2_000
         event_1 = parse_sse_event(body_1)
