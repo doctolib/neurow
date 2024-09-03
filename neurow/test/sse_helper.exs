@@ -144,7 +144,10 @@ defmodule SseHelper do
 
       payload_str = :jiffy.encode(payload)
 
-      HTTPoison.post!(publish_url(port), payload_str, headers)
+      %HTTPoison.Response{status_code: status} =
+        HTTPoison.post!(publish_url(port), payload_str, headers)
+
+      assert status == 200
     end
   end
 end
