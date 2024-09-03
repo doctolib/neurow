@@ -83,7 +83,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
 
                 assert_receive(
                   %HTTPoison.AsyncChunk{chunk: sse_event},
-                  1_000,
+                  2_000,
                   "SSE event on public port #{public_port}"
                 )
 
@@ -101,6 +101,9 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
           end)
         end)
 
+      # Wait that subscribers are actually attached before publishing the message
+      :timer.sleep(1_000)
+
       # Publish one single message on the internal API
       publish(Enum.at(internal_ports, 0), "test_topic", %{
         event: "multisubscriber_event",
@@ -108,7 +111,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       })
 
       # Wait that all subscribe tasks end
-      subscribe_tasks |> Enum.each(fn task -> Task.await(task, 10_000) end)
+      subscribe_tasks |> Enum.each(fn task -> Task.await(task, 4_000) end)
     end
   end
 
