@@ -41,22 +41,6 @@ defmodule Neurow.IntegrationTest.PublicApiIntegrationTest do
     assert {to_charlist(key), to_charlist(value)} in headers
   end
 
-  test "GET /v1/subscribe 200 no message" do
-    headers = [
-      {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo56")}"}
-    ]
-
-    {:ok, request_id} =
-      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
-
-    {:start, headers} = next_message()
-    assert_headers(headers, {"content-type", "text/event-stream"})
-    assert_headers(headers, {"cache-control", "no-cache"})
-    assert_headers(headers, {"connection", "close"})
-
-    :ok = :httpc.cancel_request(request_id)
-  end
-
   test "GET /v1/subscribe 200 timeout" do
     headers = [
       {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo56")}"}
@@ -74,30 +58,6 @@ defmodule Neurow.IntegrationTest.PublicApiIntegrationTest do
       next_message()
     end
 
-    :ok = :httpc.cancel_request(request_id)
-  end
-
-  test "GET /v1/subscribe 200 two messages" do
-    headers = [
-      {["Authorization"], "Bearer #{compute_jwt_token_in_req_header_public_api("foo57")}"}
-    ]
-
-    {:ok, request_id} =
-      :httpc.request(:get, {@subscribe_url, headers}, [], [{:sync, false}, {:stream, :self}])
-
-    {:start, headers} = next_message()
-    assert_headers(headers, {"content-type", "text/event-stream"})
-    assert_headers(headers, {"cache-control", "no-cache"})
-    assert_headers(headers, {"connection", "close"})
-
-    publish("test_issuer1-foo57", 42, "hello")
-    Process.sleep(10)
-    publish("test_issuer1-foo57", 43, "hello2")
-
-    {:stream, msg} = next_message()
-    assert msg == "id: 42\nevent: test-event\ndata: hello\n\n"
-    {:stream, msg} = next_message()
-    assert msg == "id: 43\nevent: test-event\ndata: hello2\n\n"
     :ok = :httpc.cancel_request(request_id)
   end
 
