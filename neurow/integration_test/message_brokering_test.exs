@@ -1,6 +1,4 @@
 defmodule Neurow.IntegrationTest.MessageBrokeringTest do
-  # require Logger
-
   use ExUnit.Case
   use Plug.Test
 

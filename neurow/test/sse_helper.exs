@@ -76,12 +76,21 @@ defmodule SseHelper do
         | adapter: {SseHelper.PlugSse.PlugAdapter, conn_state}
       }
     end
+
+    def assert_no_more_chunk do
+      assert_raise(
+        ExUnit.AssertionError,
+        ~r/The process mailbox is empty./,
+        fn ->
+          assert_receive {:chunk, _}
+        end
+      )
+    end
   end
 
   #
-  # Helper functions to test SSEs through HTTP connections
+  # Helper functions to test SSEs through actual HTTP connections
   #
-
   defmodule HttpSse do
     import JwtHelper
 
@@ -94,8 +103,11 @@ defmodule SseHelper do
       HTTPoison.start()
     end
 
-    def subscribe(port, topic, assert_fn) do
-      headers = [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"]
+    def subscribe(port, topic, assert_fn, extra_headers \\ []) do
+      headers =
+        [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"] ++
+          extra_headers
+
       async_response = HTTPoison.get!(subscribe_url(port), headers, stream_to: self())
       assert_fn.()
       :hackney.stop_async(async_response.id)
@@ -148,6 +160,16 @@ defmodule SseHelper do
         HTTPoison.post!(publish_url(port), payload_str, headers)
 
       assert status == 200
+    end
+
+    def assert_no_more_chunk do
+      assert_raise(
+        ExUnit.AssertionError,
+        ~r/The process mailbox is empty./,
+        fn ->
+          assert_receive(%HTTPoison.AsyncChunk{chunk: _chunk})
+        end
+      )
     end
   end
 end

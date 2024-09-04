@@ -1,5 +1,4 @@
 defmodule Neurow.PublicApi.EndpointTest do
-  alias ExUnit.AssertionError
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
@@ -159,7 +158,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
-        assert_no_more_chunk()
+        PlugSse.assert_no_more_chunk()
       end)
     end
 
@@ -180,7 +179,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
 
-        assert_no_more_chunk()
+        PlugSse.assert_no_more_chunk()
       end)
     end
 
@@ -225,7 +224,7 @@ defmodule Neurow.PublicApi.EndpointTest do
         assert event_id6.data == "Message ID6"
         assert event_id8.data == "Message ID8"
 
-        assert_no_more_chunk()
+        PlugSse.assert_no_more_chunk()
       end)
     end
 
@@ -249,7 +248,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
       PlugSse.call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
-        assert_no_more_chunk()
+        PlugSse.assert_no_more_chunk()
       end)
     end
 
@@ -432,12 +431,6 @@ defmodule Neurow.PublicApi.EndpointTest do
       assert {"access-control-max-age",
               Integer.to_string(Application.fetch_env!(:neurow, :public_api_preflight_max_age))} in response.resp_headers,
              "access-control-max-age response header"
-    end
-  end
-
-  defp assert_no_more_chunk do
-    assert_raise AssertionError, ~r/The process mailbox is empty./, fn ->
-      assert_receive {:chunk, _}
     end
   end
 
