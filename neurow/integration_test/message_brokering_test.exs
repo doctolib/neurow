@@ -5,10 +5,13 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
   import SseHelper
   alias SseHelper.HttpSse
 
+  alias Neurow.IntegrationTest.TestCluster
+
   setup do
-    Neurow.IntegrationTest.TestCluster.ensure_node_started()
+    TestCluster.ensure_node_started()
+    TestCluster.flush_history()
     HttpSse.ensure_started()
-    {:ok, cluster_state: Neurow.IntegrationTest.TestCluster.cluster_state()}
+    {:ok, cluster_state: TestCluster.cluster_state()}
   end
 
   describe "topics subscriptions" do

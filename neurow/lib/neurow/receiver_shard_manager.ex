@@ -8,6 +8,10 @@ defmodule Neurow.ReceiverShardManager do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  def flush_history do
+    GenServer.call(__MODULE__, {:flush_history})
+  end
+
   @impl true
   def init([history_min_duration]) do
     Process.send_after(
@@ -46,9 +50,18 @@ defmodule Neurow.ReceiverShardManager do
   end
 
   @impl true
-  def handle_call({:rotate}, _, opts) do
+  def handle_call({:rotate}, _, state) do
     rotate()
-    {:reply, :ok, opts}
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:flush_history}, _from, state) do
+    all_pids(fn {_, pid} ->
+      pid |> Neurow.ReceiverShard.flush_history()
+    end)
+
+    {:reply, :ok, state}
   end
 
   def build_topic(shard) do

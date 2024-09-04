@@ -17,6 +17,10 @@ defmodule Neurow.ReceiverShard do
     String.to_atom("history_#{shard}_#{sub_shard}")
   end
 
+  def flush_history(shard) do
+    GenServer.call(shard, {:flush_history})
+  end
+
   @impl true
   def init(shard) do
     :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, Neurow.ReceiverShardManager.build_topic(shard))
@@ -56,5 +60,12 @@ defmodule Neurow.ReceiverShard do
   def handle_info({:rotate}, {table_0, table_1}) do
     :ets.delete_all_objects(table_0)
     {:noreply, {table_1, table_0}}
+  end
+
+  @impl true
+  def handle_call({:flush_history}, _from, {table_0, table_1}) do
+    :ets.delete_all_objects(table_0)
+    :ets.delete_all_objects(table_1)
+    {:reply, :ok, {table_0, table_1}}
   end
 end

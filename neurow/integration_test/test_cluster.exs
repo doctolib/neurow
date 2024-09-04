@@ -8,7 +8,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
   #
   # Just starts the TestCluster GenServer, at this step nodes in the cluster are not started yet
   #
-  def start(options \\ %{}) do
+  def start_link(options \\ %{}) do
     GenServer.start_link(__MODULE__, options, name: __MODULE__)
   end
 
@@ -24,6 +24,10 @@ defmodule Neurow.IntegrationTest.TestCluster do
   #
   def cluster_state do
     GenServer.call(__MODULE__, :cluster_state)
+  end
+
+  def flush_history do
+    GenServer.call(__MODULE__, :flush__history)
   end
 
   # -- GenServer callbacks, should not be used directly --
@@ -63,6 +67,18 @@ defmodule Neurow.IntegrationTest.TestCluster do
 
         {:reply, :started, Map.put(%{state | started: true}, :nodes, nodes)}
     end
+  end
+
+  def handle_call(:flush__history, _from, state) do
+    state.nodes
+    |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
+      Task.async(fn ->
+        :ok = :rpc.call(node, Neurow.ReceiverShardManager, :flush_history, [])
+      end)
+    end)
+    |> Enum.map(fn task -> Task.await(task, 2_000) end)
+
+    {:reply, :flushed, state}
   end
 
   @impl true

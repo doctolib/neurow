@@ -2,13 +2,16 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
   use ExUnit.Case
   use Plug.Test
 
+  alias Neurow.IntegrationTest.TestCluster
+
   import SseHelper
   alias SseHelper.HttpSse
 
   setup do
-    Neurow.IntegrationTest.TestCluster.ensure_node_started()
+    TestCluster.ensure_node_started()
+    TestCluster.flush_history()
     HttpSse.ensure_started()
-    {:ok, cluster_state: Neurow.IntegrationTest.TestCluster.cluster_state()}
+    {:ok, cluster_state: TestCluster.cluster_state()}
   end
 
   describe "Fetch history on SSE subscription" do
