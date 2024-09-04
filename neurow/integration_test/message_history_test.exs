@@ -11,10 +11,31 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
     TestCluster.ensure_node_started()
     TestCluster.flush_history()
     HttpSse.ensure_started()
+
     {:ok, cluster_state: TestCluster.cluster_state()}
   end
 
   describe "Fetch history on SSE subscription" do
+    setup %{
+      cluster_state: %{
+        internal_api_ports: [first_internal_port | _other_internal_ports]
+      }
+    } do
+      HttpSse.publish(
+        first_internal_port,
+        "test_topic",
+        Enum.map(1..5, fn index ->
+          %{
+            timestamp: index,
+            event: "test_event",
+            payload: "Message #{index}"
+          }
+        end)
+      )
+
+      :ok
+    end
+
     test "do not get the topic history if Last-Event-Id is not set", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
@@ -22,7 +43,6 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
     } do
       HttpSse.subscribe(first_public_port, "test_topic", fn ->
         assert_receive %HTTPoison.AsyncStatus{code: 200}
-
         assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
         HttpSse.assert_headers(headers, [
@@ -47,7 +67,6 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         "test_topic",
         fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 400}
-
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
           HttpSse.assert_headers(headers, [
@@ -86,7 +105,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
     } do
       HttpSse.subscribe(
         first_public_port,
-        "test_topic",
+        "empty_topic",
         fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200}
 
@@ -106,14 +125,69 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       )
     end
 
-    test "get the full history if Last-Event-Id is set to 0" do
+    test "get the full history if Last-Event-Id is set to 0", %{
+      cluster_state: %{
+        public_api_ports: [first_public_port | _other_ports]
+      }
+    } do
+      HttpSse.subscribe(
+        first_public_port,
+        "test_topic",
+        fn ->
+          assert_receive %HTTPoison.AsyncStatus{code: 200}
+
+          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+
+          HttpSse.assert_headers(headers, [
+            {"access-control-allow-origin", "*"},
+            {"cache-control", "no-cache"},
+            {"connection", "close"},
+            {"content-type", "text/event-stream"},
+            {"transfer-encoding", "chunked"}
+          ])
+
+          Enum.each(1..5, fn index ->
+            assert_receive(%HTTPoison.AsyncChunk{chunk: sse_event})
+            assert_sse_event(sse_event, "test_event", "Message #{index}", "#{index}")
+          end)
+
+          HttpSse.assert_no_more_chunk()
+        end,
+        "last-event-id": "0"
+      )
     end
 
-    test "only get messages most recent than the Last-Event-Id" do
-    end
-  end
+    test "only get messages more recent than the Last-Event-Id", %{
+      cluster_state: %{
+        public_api_ports: [first_public_port | _other_ports]
+      }
+    } do
+      HttpSse.subscribe(
+        first_public_port,
+        "test_topic",
+        fn ->
+          assert_receive %HTTPoison.AsyncStatus{code: 200}
 
-  describe "Messages retention" do
+          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+
+          HttpSse.assert_headers(headers, [
+            {"access-control-allow-origin", "*"},
+            {"cache-control", "no-cache"},
+            {"connection", "close"},
+            {"content-type", "text/event-stream"},
+            {"transfer-encoding", "chunked"}
+          ])
+
+          Enum.each(3..5, fn index ->
+            assert_receive(%HTTPoison.AsyncChunk{chunk: sse_event})
+            assert_sse_event(sse_event, "test_event", "Message #{index}", "#{index}")
+          end)
+
+          HttpSse.assert_no_more_chunk()
+        end,
+        "last-event-id": "2"
+      )
+    end
   end
 
   describe "Get history on the internal API" do
