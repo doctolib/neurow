@@ -5,6 +5,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
   alias Neurow.IntegrationTest.TestCluster
 
   import SseHelper
+  import JwtHelper
   alias SseHelper.HttpSse
 
   setup do
@@ -157,7 +158,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       )
     end
 
-    test "only return messages more recent than the Last-Event-Id", %{
+    test "only returns messages more recent than the Last-Event-Id", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }
@@ -190,6 +191,157 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
     end
   end
 
-  describe "Get history on the internal API" do
+  describe "Fetch the history of a topic on the internal API" do
+    test "The history endpoint returns the full history on all nodes", %{
+      cluster_state: %{
+        internal_api_ports: internal_ports
+      }
+    } do
+      first_internal_port = Enum.at(internal_ports, 0)
+
+      expected_history =
+        Enum.map(1..5, fn index ->
+          %{
+            "timestamp" => index,
+            "event" => "test_event",
+            "payload" => "Message #{index}"
+          }
+        end)
+
+      # Publish messages on the first node
+      HttpSse.publish(
+        first_internal_port,
+        "test_topic",
+        expected_history
+      )
+
+      request_headers = [
+        Authorization: "Bearer #{compute_jwt_token_in_req_header_internal_api()}",
+        "content-type": "application/json"
+      ]
+
+      # Then iterate on each node to fetch the history on the internal API
+      Enum.each(internal_ports, fn internal_port ->
+        %HTTPoison.Response{body: body, headers: response_headers} =
+          HTTPoison.get!(
+            "http://localhost:#{first_internal_port}/history/test_issuer1-test_topic",
+            request_headers
+          )
+
+        HttpSse.assert_headers(response_headers, [
+          {"content-type", "application/json"}
+        ])
+
+        returned_history = :jiffy.decode(body, [:return_maps])
+
+        assert returned_history == expected_history, "History on internal port #{internal_port}"
+      end)
+    end
+  end
+
+  describe "messages retention" do
+    setup %{
+      cluster_state: %{
+        internal_api_ports: [first_internal_port | _other_ports]
+      }
+    } do
+      # The retention policy is set to 3 seconds in Neurow.IntegrationTest.TestCluster
+      # So, sleep times are added to ensure that message expires
+
+      # First chunk of messages
+      HttpSse.publish(
+        first_internal_port,
+        "test_topic",
+        Enum.map(1..3, fn index ->
+          %{
+            event: "test_event",
+            payload: "First chunk #{index}"
+          }
+        end)
+      )
+
+      # Wait a bit
+      Process.sleep(3000)
+
+      # Second chunk of messages
+      HttpSse.publish(
+        first_internal_port,
+        "test_topic",
+        Enum.map(1..3, fn index ->
+          %{
+            event: "test_event",
+            payload: "Second chunk #{index}"
+          }
+        end)
+      )
+
+      # Wait a bit so the first chunk of messages should be expired
+      Process.sleep(3000)
+      :ok
+    end
+
+    test "messages are not returned on the history endpoint of the internal API after expiration",
+         %{
+           cluster_state: %{
+             internal_api_ports: internal_ports
+           }
+         } do
+      request_headers = [
+        Authorization: "Bearer #{compute_jwt_token_in_req_header_internal_api()}",
+        "content-type": "application/json"
+      ]
+
+      # Fetch the history from each node and assert its content
+      Enum.each(internal_ports, fn internal_port ->
+        %HTTPoison.Response{body: body, headers: response_headers} =
+          HTTPoison.get!(
+            "http://localhost:#{internal_port}/history/test_issuer1-test_topic",
+            request_headers
+          )
+
+        HttpSse.assert_headers(response_headers, [
+          {"content-type", "application/json"}
+        ])
+
+        returned_history = :jiffy.decode(body, [:return_maps])
+
+        history_payloads =
+          returned_history
+          |> Enum.map(fn message -> message["payload"] end)
+          |> Enum.sort()
+
+        assert history_payloads == ["Second chunk 1", "Second chunk 2", "Second chunk 3"]
+      end)
+    end
+
+    test "messages are not send throug the SSE connection after expiration", %{
+      cluster_state: %{
+        public_api_ports: public_ports
+      }
+    } do
+      Enum.each(public_ports, fn public_ports ->
+        HttpSse.subscribe(
+          public_ports,
+          "test_topic",
+          fn ->
+            assert_receive %HTTPoison.AsyncStatus{code: 200}
+
+            assert_receive %HTTPoison.AsyncHeaders{}
+
+            history_payloads =
+              Enum.map(1..3, fn _index ->
+                assert_receive %HTTPoison.AsyncChunk{chunk: sse_event}
+                parse_sse_event(sse_event).data
+              end)
+              |> Enum.sort()
+
+            HttpSse.assert_no_more_chunk()
+
+            assert history_payloads == ["Second chunk 1", "Second chunk 2", "Second chunk 3"]
+          end,
+          "last-event-id": "0"
+        )
+      end)
+    end
   end
 end

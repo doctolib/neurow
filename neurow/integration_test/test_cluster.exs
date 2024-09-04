@@ -40,7 +40,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
        node_amount: options[:node_amount] || 3,
        internal_api_port_start: options[:internal_api_port_start] || 3010,
        public_api_port_start: options[:public_api_port_start] || 4010,
-       history_min_duration: options[:history_min_duration] || 30,
+       history_min_duration: options[:history_min_duration] || 3,
        # List of [{node, public_api_port, internal_api_port}]
        nodes: []
      }}
@@ -153,6 +153,13 @@ defmodule Neurow.IntegrationTest.TestCluster do
     # 3. Override values required by the integration test cluster
     :ok = :rpc.call(node, Application, :put_env, [:neurow, :public_api_port, public_api_port])
     :ok = :rpc.call(node, Application, :put_env, [:neurow, :internal_api_port, internal_api_port])
+
+    :ok =
+      :rpc.call(node, Application, :put_env, [
+        :neurow,
+        :history_min_duration,
+        state.history_min_duration
+      ])
 
     :ok =
       :rpc.call(node, Application, :put_env, [
