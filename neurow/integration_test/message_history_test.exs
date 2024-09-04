@@ -36,7 +36,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       :ok
     end
 
-    test "do not get the topic history if Last-Event-Id is not set", %{
+    test "do not return the topic history if Last-Event-Id is not set", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }
@@ -57,7 +57,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       end)
     end
 
-    test "get a 400 error if Last-Event-Id is not an number", %{
+    test "return a 400 error if Last-Event-Id is not an number", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }
@@ -98,7 +98,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       )
     end
 
-    test "do not get any message if the topic history is empty", %{
+    test "do not return any message if the topic history is empty", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }
@@ -125,7 +125,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       )
     end
 
-    test "get the full history if Last-Event-Id is set to 0", %{
+    test "return the full history if Last-Event-Id is set to 0", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }
@@ -157,7 +157,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       )
     end
 
-    test "only get messages more recent than the Last-Event-Id", %{
+    test "only return messages more recent than the Last-Event-Id", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }

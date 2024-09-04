@@ -129,49 +129,6 @@ defmodule Neurow.IntegrationTest.HistoryIntegrationTest do
     assert_history("test_issuer1-bar", ["foo56"])
   end
 
-  test "last-event-id" do
-    first_id = publish_message("foo56", "bar")
-    second_id = publish_message("foo57", "bar")
-
-    assert_history("test_issuer1-bar", ["foo56", "foo57"])
-
-    request_id = subscribe("bar")
-
-    assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
-      next_message()
-    end
-
-    :ok = :httpc.cancel_request(request_id)
-
-    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(first_id)}])
-    {:stream, msg} = next_message()
-    assert msg == "id: #{second_id}\nevent: test-event\ndata: foo57\n\n"
-
-    assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
-      next_message()
-    end
-
-    :ok = :httpc.cancel_request(request_id)
-
-    # End of is history
-    request_id = subscribe("bar", [{["Last-Event-ID"], to_string(second_id)}])
-
-    assert_raise RuntimeError, ~r/^Timeout waiting for message$/, fn ->
-      next_message()
-    end
-
-    :ok = :httpc.cancel_request(request_id)
-
-    # Unknown id
-    request_id = subscribe("bar", [{["Last-Event-ID"], "12"}])
-    output = all_messages()
-
-    assert output ==
-             "id: #{first_id}\nevent: test-event\ndata: foo56\n\nid: #{second_id}\nevent: test-event\ndata: foo57\n\n"
-
-    :ok = :httpc.cancel_request(request_id)
-  end
-
   test "rotate" do
     assert_history("test_issuer1-bar", [])
     publish_message("message 1", "bar")
