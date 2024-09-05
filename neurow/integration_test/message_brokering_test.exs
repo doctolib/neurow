@@ -1,6 +1,5 @@
 defmodule Neurow.IntegrationTest.MessageBrokeringTest do
   use ExUnit.Case
-  use Plug.Test
 
   import SseHelper
   alias SseHelper.HttpSse

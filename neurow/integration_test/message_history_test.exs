@@ -1,6 +1,5 @@
 defmodule Neurow.IntegrationTest.MessageHistoryTest do
   use ExUnit.Case
-  use Plug.Test
 
   alias Neurow.IntegrationTest.TestCluster
 

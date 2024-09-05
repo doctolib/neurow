@@ -1,6 +1,5 @@
 defmodule Neurow.IntegrationTest.TestCluster do
   use GenServer
-
   require Logger
 
   # -- Public API --
@@ -41,6 +40,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
        internal_api_port_start: options[:internal_api_port_start] || 3010,
        public_api_port_start: options[:public_api_port_start] || 4010,
        history_min_duration: options[:history_min_duration] || 3,
+       sse_timeout: options[:internal_api_port_start] || 3000,
        # List of [{node, public_api_port, internal_api_port}]
        nodes: []
      }}
@@ -159,6 +159,13 @@ defmodule Neurow.IntegrationTest.TestCluster do
         :neurow,
         :history_min_duration,
         state.history_min_duration
+      ])
+
+    :ok =
+      :rpc.call(node, Application, :put_env, [
+        :neurow,
+        :sse_timeout,
+        state.sse_timeout
       ])
 
     :ok =

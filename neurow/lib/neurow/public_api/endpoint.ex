@@ -208,6 +208,7 @@ defmodule Neurow.PublicApi.Endpoint do
           # SSE Timeout
           now - last_message > sse_timeout ->
             Logger.debug("Client disconnected due to inactivity")
+            chunk(conn, "event: timeout\n\n")
             :timeout
 
           # SSE Keep alive, send a ping
