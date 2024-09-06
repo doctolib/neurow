@@ -1,30 +1,48 @@
 defmodule Neurow.IntegrationTest.TestCluster do
+  @moduledoc """
+  Starts and manages a cluster of multiple Neurow nodes, started locally during integration tests
+  """
+
   use GenServer
   require Logger
 
-  # -- Public API --
-
-  #
-  # Just starts the TestCluster GenServer, at this step nodes in the cluster are not started yet
-  #
+  @doc """
+  Just starts the TestCluster GenServer, at this step nodes of the cluster are not started yet
+  A call to this method is expected in test_helper.exs. It just starts the TestCluster GenServer so it can be used
+  later in integration test cases.
+  """
   def start_link(options \\ %{}) do
     GenServer.start_link(__MODULE__, options, name: __MODULE__)
   end
 
-  #
-  # Starts Neurow test nodes in the cluster, according to the TestCluster configuration
-  #
-  def ensure_node_started do
-    GenServer.call(__MODULE__, :ensure_node_started, 20_000)
+  @doc """
+  Starts Neurow nodes in the cluster if they are not started yet, according to the TestCluster configuration
+  A call to this method is expected in the setup block of integration tests
+  """
+  def ensure_nodes_started do
+    GenServer.call(__MODULE__, :ensure_nodes_started, 20_000)
   end
 
-  #
-  # Returns a summary of the cluster state that can be injected in tests
-  #
+  @doc """
+  Returns a summary of the cluster state that can be injected in tests contexts. The result looks like:
+
+  ```Elixir
+  %{
+      started: true|false,
+      cluster_size: number of nodes in the cluster
+      public_api_ports: ports of the public apis of each node
+      internal_api_ports: ports of the internal apis of each node
+    }
+  ```
+  """
   def cluster_state do
     GenServer.call(__MODULE__, :cluster_state)
   end
 
+  @doc """
+  Flush the message history of all nodes in the cluster.
+  A call to this method is expected in the setup block of integration tests
+  """
   def flush_history do
     GenServer.call(__MODULE__, :flush__history)
   end
@@ -35,7 +53,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
     {:ok,
      %{
        started: false,
-       node_prefix: options[:node_pprefix] || "neurow_test_node_",
+       node_prefix: options[:node_prefix] || "neurow_test_node_",
        node_amount: options[:node_amount] || 3,
        internal_api_port_start: options[:internal_api_port_start] || 3010,
        public_api_port_start: options[:public_api_port_start] || 4010,
@@ -47,7 +65,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
   end
 
   @impl true
-  def handle_call(:ensure_node_started, _from, state) do
+  def handle_call(:ensure_nodes_started, _from, state) do
     case state do
       %{started: true} ->
         {:reply, :already_started, state}
@@ -102,20 +120,17 @@ defmodule Neurow.IntegrationTest.TestCluster do
   def terminate(_reason, state) do
     state.nodes
     |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
-      Logger.warning("Stopping node #{node}")
+      Logger.info("Stopping node #{node}")
       :peer.stop(node)
     end)
   end
 
-  #
-  # Start a new Neurow node,
-  #
   defp start_node(node_index, state) do
     node_name = ~c"#{state.node_prefix}#{node_index}"
     public_api_port = state.public_api_port_start + node_index
     internal_api_port = state.internal_api_port_start + node_index
 
-    Logger.warning("Starting Neurow node #{node_name} ...")
+    Logger.info("Starting Neurow node #{node_name} ...")
 
     # -- Start a new Erlang node --
     {:ok, pid, node} =
@@ -123,7 +138,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
 
     if Node.ping(node) == :pang do
       Logger.warning("Current node status: #{Node.alive?()}, state: #{:peer.get_state(pid)}")
-      raise "Cannot contact the #{node}"
+      raise "Cannot contact node #{node}"
     end
 
     # -- Add the Elixir & Neurow code to the Erlang VM --
@@ -186,7 +201,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
       {:ok, _} = :rpc.call(node, Application, :ensure_all_started, [app_name])
     end)
 
-    Logger.warning("Neurow node #{node_name} started")
+    Logger.info("Neurow node #{node_name} started")
 
     {node, public_api_port, internal_api_port}
   end

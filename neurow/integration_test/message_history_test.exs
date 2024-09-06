@@ -4,14 +4,13 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
   alias Neurow.IntegrationTest.TestCluster
 
   import SseHelper
+  import SseHelper.HttpSse
   import JwtHelper
-  alias SseHelper.HttpSse
 
   setup do
-    TestCluster.ensure_node_started()
+    TestCluster.ensure_nodes_started()
     TestCluster.flush_history()
-    HttpSse.ensure_started()
-
+    SseHelper.HttpSse.ensure_started()
     {:ok, cluster_state: TestCluster.cluster_state()}
   end
 
@@ -21,7 +20,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         internal_api_ports: [first_internal_port | _other_internal_ports]
       }
     } do
-      HttpSse.publish(
+      publish(
         first_internal_port,
         "test_topic",
         Enum.map(1..5, fn index ->
@@ -41,11 +40,11 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(first_public_port, "test_topic", fn ->
+      subscribe(first_public_port, "test_topic", fn ->
         assert_receive %HTTPoison.AsyncStatus{code: 200}
         assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-        HttpSse.assert_headers(headers, [
+        assert_headers(headers, [
           {"access-control-allow-origin", "*"},
           {"cache-control", "no-cache"},
           {"connection", "close"},
@@ -53,7 +52,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
           {"transfer-encoding", "chunked"}
         ])
 
-        HttpSse.assert_no_more_chunk()
+        assert_no_more_chunk()
       end)
     end
 
@@ -62,14 +61,14 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 400}
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-          HttpSse.assert_headers(headers, [
+          assert_headers(headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
@@ -103,7 +102,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(
+      subscribe(
         first_public_port,
         "empty_topic",
         fn ->
@@ -111,7 +110,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-          HttpSse.assert_headers(headers, [
+          assert_headers(headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
@@ -119,7 +118,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             {"transfer-encoding", "chunked"}
           ])
 
-          HttpSse.assert_no_more_chunk()
+          assert_no_more_chunk()
         end,
         "last-event-id": "0"
       )
@@ -130,7 +129,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
@@ -138,7 +137,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-          HttpSse.assert_headers(headers, [
+          assert_headers(headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
@@ -151,7 +150,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             assert_sse_event(sse_event, "test_event", "Message #{index}", "#{index}")
           end)
 
-          HttpSse.assert_no_more_chunk()
+          assert_no_more_chunk()
         end,
         "last-event-id": "0"
       )
@@ -162,7 +161,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
@@ -170,7 +169,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-          HttpSse.assert_headers(headers, [
+          assert_headers(headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
@@ -183,7 +182,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             assert_sse_event(sse_event, "test_event", "Message #{index}", "#{index}")
           end)
 
-          HttpSse.assert_no_more_chunk()
+          assert_no_more_chunk()
         end,
         "last-event-id": "2"
       )
@@ -208,7 +207,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         end)
 
       # Publish messages on the first node
-      HttpSse.publish(
+      publish(
         first_internal_port,
         "test_topic",
         expected_history
@@ -227,7 +226,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             request_headers
           )
 
-        HttpSse.assert_headers(response_headers, [
+        assert_headers(response_headers, [
           {"content-type", "application/json"}
         ])
 
@@ -248,7 +247,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       # So, sleep times are added to ensure that message expires
 
       # First chunk of messages
-      HttpSse.publish(
+      publish(
         first_internal_port,
         "test_topic",
         Enum.map(1..3, fn index ->
@@ -263,7 +262,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       Process.sleep(3000)
 
       # Second chunk of messages
-      HttpSse.publish(
+      publish(
         first_internal_port,
         "test_topic",
         Enum.map(1..3, fn index ->
@@ -274,8 +273,8 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         end)
       )
 
-      # Wait a bit so the first chunk of messages should be expired
-      Process.sleep(3000)
+      # Wait a bit more so the first chunk of messages should be expired
+      Process.sleep(2900)
       :ok
     end
 
@@ -298,7 +297,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             request_headers
           )
 
-        HttpSse.assert_headers(response_headers, [
+        assert_headers(response_headers, [
           {"content-type", "application/json"}
         ])
 
@@ -313,13 +312,13 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       end)
     end
 
-    test "messages are not send throug the SSE connection after expiration", %{
+    test "messages are not sent throught the SSE connection after expiration", %{
       cluster_state: %{
         public_api_ports: public_ports
       }
     } do
       Enum.each(public_ports, fn public_ports ->
-        HttpSse.subscribe(
+        subscribe(
           public_ports,
           "test_topic",
           fn ->
@@ -334,7 +333,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
               end)
               |> Enum.sort()
 
-            HttpSse.assert_no_more_chunk()
+            assert_no_more_chunk()
 
             assert history_payloads == ["Second chunk 1", "Second chunk 2", "Second chunk 3"]
           end,

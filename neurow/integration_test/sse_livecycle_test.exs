@@ -2,14 +2,14 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
   use ExUnit.Case
 
   import SseHelper
-  alias SseHelper.HttpSse
+  import SseHelper.HttpSse
 
   alias Neurow.IntegrationTest.TestCluster
 
   setup do
-    TestCluster.ensure_node_started()
+    TestCluster.ensure_nodes_started()
     TestCluster.flush_history()
-    HttpSse.ensure_started()
+    SseHelper.HttpSse.ensure_started()
     {:ok, cluster_state: TestCluster.cluster_state()}
   end
 
@@ -19,11 +19,11 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(first_public_port, "test_topic", fn ->
+      subscribe(first_public_port, "test_topic", fn ->
         assert_receive %HTTPoison.AsyncStatus{code: 200}
         assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-        HttpSse.assert_headers(headers, [
+        assert_headers(headers, [
           {"access-control-allow-origin", "*"},
           {"cache-control", "no-cache"},
           {"connection", "close"},
@@ -45,14 +45,14 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
              public_api_ports: [first_public_port | _other_ports]
            }
          } do
-      HttpSse.subscribe(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200}
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-          HttpSse.assert_headers(
+          assert_headers(
             headers,
             [
               {"access-control-allow-origin", "*"},
@@ -76,19 +76,19 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
   end
 
   describe "keepalive" do
-    test "the server regularly send a ping event to keep the conneciton open", %{
+    test "the server periodically sends a ping event to keep the connection open", %{
       cluster_state: %{
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      HttpSse.subscribe(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200}
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
-          HttpSse.assert_headers(
+          assert_headers(
             headers,
             [
               {"access-control-allow-origin", "*"},

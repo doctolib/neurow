@@ -1,9 +1,14 @@
 defmodule SseHelper do
+  @moduledoc """
+  Provides Helper function to test SSE connections
+  - Functions at the root of the modules can be used both in unit and integration tests
+  - Functions in SseHelper.PlugSse help to test Plug endpoint in unit test,
+  - Functions in SSeHelper.HttpSse help to test Neurow though actual HTTP connections in integration tests
+  """
+
   import ExUnit.Assertions
 
-  #
   # Common functions to parse and assert SSE events (either for unit tests and integration tests)
-  #
 
   def parse_sse_event(sse_event_chunk) do
     String.split(sse_event_chunk, "\n")
@@ -39,10 +44,10 @@ defmodule SseHelper do
     end
   end
 
-  #
-  # Helper functions to test a plug SSE endpoint
-  #
   defmodule PlugSse do
+    @moduledoc """
+    Helper functions to test a plug SSE endpoint
+    """
     defmodule PlugAdapter do
       def send_chunked(state, status, headers) do
         send(state[:owner], {:send_chunked, status})
@@ -55,11 +60,11 @@ defmodule SseHelper do
       end
     end
 
-    #
-    # Tests interaction with a SSE request by:
-    # - Calling the plug endpoint in a children task,
-    # - Intercepts calls to `send_chunk` and `chunk` from the application plugs to send messages to the test process
-    #
+    @doc """
+    Tests interaction with a SSE request by:
+     - Calling the plug endpoint in a children task,
+     - Intercepts calls to `send_chunk` and `chunk` from the application plugs to send messages to the test process
+    """
     def call(plug_endpoint, conn, assertion_fn, options \\ []) do
       instrumented_conn = conn |> instrument()
       call_task = Task.async(fn -> plug_endpoint.call(instrumented_conn, options) end)
@@ -88,16 +93,18 @@ defmodule SseHelper do
     end
   end
 
-  #
-  # Helper functions to test SSEs through actual HTTP connections
-  #
   defmodule HttpSse do
+    @moduledoc """
+     Helper functions to test SSEs through actual HTTP connections
+    """
     import JwtHelper
 
     def publish_url(port), do: "http://localhost:#{port}/v1/publish"
     def subscribe_url(port), do: "http://localhost:#{port}/v1/subscribe"
 
-    # Required in test setups before using HTTPoison
+    @doc """
+    Required in test setups before using HTTPoison
+    """
     def ensure_started do
       Application.ensure_all_started(:httpoison)
       HTTPoison.start()
