@@ -274,7 +274,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       )
 
       # Wait a bit more so the first chunk of messages should be expired
-      Process.sleep(2900)
+      Process.sleep(3000)
       :ok
     end
 
