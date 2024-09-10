@@ -151,7 +151,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       # Wait that subscribers are actually attached before publishing the message
       :timer.sleep(1_000)
 
-      # Then, send one messages on multiple topics in one call to the internal API
+      # Then, send one message on multiple topics in one call to the internal API
       publish(
         first_internal_port,
         Enum.map(public_ports, fn public_port -> "test_topic:#{public_port}" end),

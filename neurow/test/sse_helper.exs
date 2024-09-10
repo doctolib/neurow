@@ -137,12 +137,9 @@ defmodule SseHelper do
       payload =
         %{}
         |> Map.merge(
-          case topics do
-            topics when is_list(topics) ->
-              %{topics: topics}
-
-            topic when is_binary(topic) ->
-              %{topic: topic}
+          cond do
+            is_list(topics) -> %{topics: topics}
+            is_binary(topic) -> %{topic: topic}
           end
         )
         |> Map.merge(
@@ -163,10 +160,10 @@ defmodule SseHelper do
 
       payload_str = :jiffy.encode(payload)
 
-      %HTTPoison.Response{status_code: status} =
+      %HTTPoison.Response{status_code: status, body: body} =
         HTTPoison.post!(publish_url(port), payload_str, headers)
 
-      assert status == 200
+      assert status == 200, "Cannot publish message(s): #{status}, #{inspect(body)}"
     end
 
     def assert_no_more_chunk do
