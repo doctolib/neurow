@@ -139,7 +139,7 @@ defmodule SseHelper do
         |> Map.merge(
           cond do
             is_list(topics) -> %{topics: topics}
-            is_binary(topic) -> %{topic: topic}
+            is_binary(topics) -> %{topic: topics}
           end
         )
         |> Map.merge(
