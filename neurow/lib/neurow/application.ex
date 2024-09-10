@@ -10,14 +10,33 @@ defmodule Neurow.Application do
   def start(_type, _args) do
     public_api_port = Application.fetch_env!(:neurow, :public_api_port)
     internal_api_port = Application.fetch_env!(:neurow, :internal_api_port)
-    Logger.warning("Current host #{node()}")
-
-    Logger.warning("Starting internal API on port #{internal_api_port}")
-
     {:ok, ssl_keyfile} = Application.fetch_env(:neurow, :ssl_keyfile)
     {:ok, ssl_certfile} = Application.fetch_env(:neurow, :ssl_certfile)
-
     {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
+
+    cluster_topologies =
+      Application.get_env(:neurow, :cluster_topologies, cluster_topologies_from_env_variables())
+
+    start(%{
+      public_api_port: public_api_port,
+      internal_api_port: internal_api_port,
+      ssl_keyfile: ssl_keyfile,
+      ssl_certfile: ssl_certfile,
+      history_min_duration: history_min_duration,
+      cluster_topologies: cluster_topologies
+    })
+  end
+
+  def start(%{
+        public_api_port: public_api_port,
+        internal_api_port: internal_api_port,
+        ssl_keyfile: ssl_keyfile,
+        ssl_certfile: ssl_certfile,
+        history_min_duration: history_min_duration,
+        cluster_topologies: cluster_topologies
+      }) do
+    Logger.warning("Current host #{node()}, environment: #{Mix.env()}")
+    Logger.warning("Starting internal API on port #{internal_api_port}")
 
     base_public_api_http_config = [
       port: public_api_port,
@@ -52,38 +71,35 @@ defmodule Neurow.Application do
         {Plug.Cowboy,
          scheme: :http, plug: Neurow.InternalApi.Endpoint, options: [port: internal_api_port]},
         {Plug.Cowboy,
-         scheme: sse_http_scheme, plug: Neurow.PublicApi, options: public_api_http_config},
-        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.HTTP], shutdown: 20_000},
+         scheme: sse_http_scheme, plug: Neurow.PublicApi.Endpoint, options: public_api_http_config},
+        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.Endpoint], shutdown: 20_000},
         {StopListener, []},
         {Neurow.ReceiverShardManager, [history_min_duration]}
-      ] ++ Neurow.ReceiverShardManager.create_receivers()
+      ] ++
+        Neurow.ReceiverShardManager.create_receivers() ++
+        if cluster_topologies do
+          [{Cluster.Supervisor, [cluster_topologies, [name: Neurow.ClusterSupervisor]]}]
+        else
+          []
+        end
 
     MetricsPlugExporter.setup()
     Stats.setup()
-
     JOSE.json_module(:jiffy)
 
     opts = [strategy: :one_for_one, name: Neurow.Supervisor]
-    Supervisor.start_link(add_cluster_supervisor(children), opts)
+
+    Supervisor.start_link(children, opts)
   end
 
-  defp ec2_ip_to_nodename(list, _) when is_list(list) do
-    [sname, _] = String.split(to_string(node()), "@")
-
-    list
-    |> Enum.map(fn ip ->
-      :"#{sname}@ip-#{String.replace(ip, ".", "-")}"
-    end)
-  end
-
-  defp add_cluster_supervisor(children) do
+  defp cluster_topologies_from_env_variables do
     cond do
       System.get_env("K8S_SELECTOR") && System.get_env("K8S_NAMESPACE") ->
         Logger.info(
           "Starting libcluster with K8S selector: #{System.get_env("K8S_SELECTOR")} in namespace: #{System.get_env("K8S_NAMESPACE")}"
         )
 
-        topologies = [
+        [
           k8s: [
             strategy: Cluster.Strategy.Kubernetes,
             config: [
@@ -97,14 +113,12 @@ defmodule Neurow.Application do
           ]
         ]
 
-        children ++ [{Cluster.Supervisor, [topologies, [name: MyApp.ClusterSupervisor]]}]
-
       System.get_env("EPMD_CLUSTER_MEMBERS") ->
         Logger.info(
           "Starting libcluster with EMPD_CLUSTER_MEMBERS: #{System.get_env("EPMD_CLUSTER_MEMBERS")}"
         )
 
-        topologies = [
+        [
           epmd: [
             strategy: Cluster.Strategy.Epmd,
             config: [
@@ -117,14 +131,12 @@ defmodule Neurow.Application do
           ]
         ]
 
-        children ++ [{Cluster.Supervisor, [topologies, [name: MyApp.ClusterSupervisor]]}]
-
       System.get_env("EC2_CLUSTER_TAG") && System.get_env("EC2_CLUSTER_VALUE") ->
         Logger.info(
           "Starting libcluster with EC2_CLUSTER_TAG: #{System.get_env("EC2_CLUSTER_TAG")}"
         )
 
-        topologies = [
+        [
           ec2: [
             strategy: ClusterEC2.Strategy.Tags,
             config: [
@@ -136,10 +148,17 @@ defmodule Neurow.Application do
           ]
         ]
 
-        children ++ [{Cluster.Supervisor, [topologies, [name: MyApp.ClusterSupervisor]]}]
-
       true ->
-        children
+        nil
     end
+  end
+
+  defp ec2_ip_to_nodename(list, _) when is_list(list) do
+    [sname, _] = String.split(to_string(node()), "@")
+
+    list
+    |> Enum.map(fn ip ->
+      :"#{sname}@ip-#{String.replace(ip, ".", "-")}"
+    end)
   end
 end
