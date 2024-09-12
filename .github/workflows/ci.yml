@@ -5,7 +5,7 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-xs
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
@@ -19,7 +19,7 @@ jobs:
       - run: cd neurow && mix test
 
   ci-loadtest:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-xs
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
@@ -31,7 +31,7 @@ jobs:
       - run: cd load_test && mix compile --warnings-as-errors
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-xs
     steps:
       - uses: actions/checkout@v4
       - run: cd neurow && docker build .
