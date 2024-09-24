@@ -3,7 +3,7 @@ defmodule Neurow.InternalApi.Endpoint do
   require Node
   import Plug.Conn
   alias Neurow.InternalApi.PublishRequest
-  alias Neurow.InternalApi.Message
+  alias Neurow.Broker.Message
 
   use Plug.Router
   plug(MetricsPlugExporter)

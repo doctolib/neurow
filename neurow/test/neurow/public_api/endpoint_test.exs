@@ -480,7 +480,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
   defp publish_message(topic, id, message) do
     :ok =
-      Neurow.Broker.ReceiverShardManager.broadcast(topic, %Neurow.InternalApi.Message{
+      Neurow.Broker.ReceiverShardManager.broadcast(topic, %Neurow.Broker.Message{
         event: "test-event",
         payload: message,
         timestamp: id

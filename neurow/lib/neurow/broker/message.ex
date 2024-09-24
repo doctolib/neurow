@@ -1,19 +1,5 @@
-defmodule Neurow.InternalApi.Message do
+defmodule Neurow.Broker.Message do
   defstruct [:event, :timestamp, :payload]
-
-  def from_json(payload) when is_binary(payload) do
-    {:ok, from_json(:jiffy.decode(payload, [:return_maps]))}
-  rescue
-    exception -> {:error, exception}
-  end
-
-  def from_json(payload) when is_map(payload) do
-    %Neurow.InternalApi.Message{
-      event: payload["event"],
-      timestamp: payload["timestamp"],
-      payload: payload["payload"]
-    }
-  end
 
   def validate(message) do
     cond do
