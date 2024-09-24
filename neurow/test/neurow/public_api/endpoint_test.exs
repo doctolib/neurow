@@ -103,8 +103,8 @@ defmodule Neurow.PublicApi.EndpointTest do
 
   describe "history" do
     setup do
-      GenServer.call(Neurow.ReceiverShardManager, {:rotate})
-      GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+      GenServer.call(Neurow.Broker.ReceiverShardManager, {:rotate})
+      GenServer.call(Neurow.Broker.ReceiverShardManager, {:rotate})
       Process.sleep(20)
       :ok
     end
@@ -480,7 +480,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
   defp publish_message(topic, id, message) do
     :ok =
-      Neurow.ReceiverShardManager.broadcast(topic, %Neurow.InternalApi.Message{
+      Neurow.Broker.ReceiverShardManager.broadcast(topic, %Neurow.InternalApi.Message{
         event: "test-event",
         payload: message,
         timestamp: id
