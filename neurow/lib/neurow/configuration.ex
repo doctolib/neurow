@@ -49,6 +49,10 @@ defmodule Neurow.Configuration do
     Application.fetch_env!(:neurow, :sse_keepalive)
   end
 
+  def public_api_context_path do
+    Application.get_env(:neurow, :public_api_context_path, "")
+  end
+
   @impl true
   def init(_opts) do
     {:ok,

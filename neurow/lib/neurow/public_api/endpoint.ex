@@ -20,7 +20,19 @@ defmodule Neurow.PublicApi.Endpoint do
   plug(:match)
   plug(:dispatch)
 
-  get "/v1/subscribe" do
+  match _ do
+    context_path = Neurow.Configuration.public_api_context_path()
+
+    case {conn.method, conn.request_path} do
+      {"GET", ^context_path <> "/v1/subscribe"} ->
+        subscribe(conn)
+
+      _ ->
+        conn |> send_resp(404, "")
+    end
+  end
+
+  defp subscribe(conn) do
     case conn.assigns[:jwt_payload] do
       %{"iss" => issuer, "sub" => sub} ->
         topic = "#{issuer}-#{sub}"
@@ -81,35 +93,7 @@ defmodule Neurow.PublicApi.Endpoint do
     send_http_error(conn, :forbidden, error_code, error_message)
   end
 
-  def send_http_error(conn, http_status, error_code, error_message) do
-    origin =
-      case conn |> get_req_header("origin") do
-        [origin] -> origin
-        _ -> "*"
-      end
-
-    response =
-      :jiffy.encode(%{
-        errors: [
-          %{error_code: error_code, error_message: error_message}
-        ]
-      })
-
-    now = :os.system_time(:seconds)
-
-    {:ok, conn} =
-      conn
-      |> put_resp_header("content-type", "text/event-stream")
-      |> put_resp_header("access-control-allow-origin", origin)
-      |> put_resp_header("cache-control", "no-cache")
-      |> put_resp_header("connection", "close")
-      |> send_chunked(http_status)
-      |> chunk("id:#{now}\nevent: neurow_error_#{http_status}\ndata: #{response}\n\n")
-
-    conn
-  end
-
-  def preflight_request(conn, _options) do
+  def preflight_request(conn, _opts) do
     case conn.method do
       "OPTIONS" ->
         with(
@@ -140,8 +124,32 @@ defmodule Neurow.PublicApi.Endpoint do
     end
   end
 
-  match _ do
-    send_resp(conn, 404, "")
+  defp send_http_error(conn, http_status, error_code, error_message) do
+    origin =
+      case conn |> get_req_header("origin") do
+        [origin] -> origin
+        _ -> "*"
+      end
+
+    response =
+      :jiffy.encode(%{
+        errors: [
+          %{error_code: error_code, error_message: error_message}
+        ]
+      })
+
+    now = :os.system_time(:seconds)
+
+    {:ok, conn} =
+      conn
+      |> put_resp_header("content-type", "text/event-stream")
+      |> put_resp_header("access-control-allow-origin", origin)
+      |> put_resp_header("cache-control", "no-cache")
+      |> put_resp_header("connection", "close")
+      |> send_chunked(http_status)
+      |> chunk("id:#{now}\nevent: neurow_error_#{http_status}\ndata: #{response}\n\n")
+
+    conn
   end
 
   defp extract_last_event_id(conn) do
