@@ -30,6 +30,7 @@ Available environment variables are:
 | `LOG_LEVEL` | info | Log level |
 | `PUBLIC_API_PORT` | 4000 | TCP port of the public API |
 | `PUBLIC_API_JWT_MAX_LIFETIME` | 120 | Max lifetime in seconds allowed for JWT tokens issued on the public API |
+| `PUBLIC_API_CONTEXT_PATH` | "" | URL prefix for resources of the public API - Useful to mount Neurow on a existing website|
 | `PREFLIGHT_MAX_AGE` | 86400 | Value of the `access-control-max-age` headers on CROS preflight responses on the public API |
 | `SSE_TIMEOUT` | 900000 | SSE deconnection delay in ms, after the last received message
 | `SSE_KEEPALIVE` | 600000 | Neurow periodically send `ping` events on SSE connections to prevent connections from being closed by network devices. This variable defines the delay between two ping events |
