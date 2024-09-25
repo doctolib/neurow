@@ -74,9 +74,9 @@ defmodule Neurow.Application do
          scheme: sse_http_scheme, plug: Neurow.PublicApi.Endpoint, options: public_api_http_config},
         {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.Endpoint], shutdown: 20_000},
         {StopListener, []},
-        {Neurow.ReceiverShardManager, [history_min_duration]}
+        {Neurow.Broker.ReceiverShardManager, [history_min_duration]}
       ] ++
-        Neurow.ReceiverShardManager.create_receivers() ++
+        Neurow.Broker.ReceiverShardManager.create_receivers() ++
         if cluster_topologies do
           [{Cluster.Supervisor, [cluster_topologies, [name: Neurow.ClusterSupervisor]]}]
         else

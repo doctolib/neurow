@@ -1,4 +1,4 @@
-defmodule Neurow.ReceiverShardManager do
+defmodule Neurow.Broker.ReceiverShardManager do
   require Logger
   use GenServer
 
@@ -37,7 +37,7 @@ defmodule Neurow.ReceiverShardManager do
 
   def all_pids(fun) do
     Enum.map(0..(@shards - 1), fn shard ->
-      fun.({shard, Neurow.ReceiverShard.build_name(shard)})
+      fun.({shard, Neurow.Broker.ReceiverShard.build_name(shard)})
     end)
   end
 
@@ -58,7 +58,7 @@ defmodule Neurow.ReceiverShardManager do
   @impl true
   def handle_call({:flush_history}, _from, state) do
     all_pids(fn {_, pid} ->
-      pid |> Neurow.ReceiverShard.flush_history()
+      pid |> Neurow.Broker.ReceiverShard.flush_history()
     end)
 
     {:reply, :ok, state}
@@ -70,12 +70,12 @@ defmodule Neurow.ReceiverShardManager do
 
   # Read from the current process, not from GenServer process
   def get_history(topic) do
-    Neurow.ReceiverShard.get_history(shard_from_topic(topic), topic)
+    Neurow.Broker.ReceiverShard.get_history(shard_from_topic(topic), topic)
   end
 
   def create_receivers() do
     all_pids(fn {shard, pid} ->
-      Supervisor.child_spec({Neurow.ReceiverShard, shard}, id: pid)
+      Supervisor.child_spec({Neurow.Broker.ReceiverShard, shard}, id: pid)
     end)
   end
 

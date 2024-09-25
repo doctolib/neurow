@@ -1,5 +1,5 @@
 defmodule Neurow.InternalApi.PublishRequest do
-  alias Neurow.InternalApi.Message
+  alias Neurow.Broker.Message
 
   defstruct [:topics, :topic, :message, :messages]
 
@@ -16,7 +16,7 @@ defmodule Neurow.InternalApi.PublishRequest do
       message:
         case payload["message"] do
           message when is_map(message) ->
-            Neurow.InternalApi.Message.from_json(payload["message"])
+            message_from_json(payload["message"])
 
           _ ->
             nil
@@ -26,7 +26,7 @@ defmodule Neurow.InternalApi.PublishRequest do
           messages when is_list(messages) ->
             Enum.map(messages, fn message ->
               case message do
-                message when is_map(message) -> Neurow.InternalApi.Message.from_json(message)
+                message when is_map(message) -> message_from_json(message)
                 _ -> nil
               end
             end)
@@ -115,5 +115,13 @@ defmodule Neurow.InternalApi.PublishRequest do
       {message, nil} -> [message]
       {nil, messages} -> messages
     end
+  end
+
+  defp message_from_json(payload) when is_map(payload) do
+    %Neurow.Broker.Message{
+      event: payload["event"],
+      timestamp: payload["timestamp"],
+      payload: payload["payload"]
+    }
   end
 end

@@ -103,8 +103,8 @@ defmodule Neurow.PublicApi.EndpointTest do
 
   describe "history" do
     setup do
-      GenServer.call(Neurow.ReceiverShardManager, {:rotate})
-      GenServer.call(Neurow.ReceiverShardManager, {:rotate})
+      GenServer.call(Neurow.Broker.ReceiverShardManager, {:rotate})
+      GenServer.call(Neurow.Broker.ReceiverShardManager, {:rotate})
       Process.sleep(20)
       :ok
     end
@@ -434,9 +434,53 @@ defmodule Neurow.PublicApi.EndpointTest do
     end
   end
 
+  describe "context path" do
+    setup do
+      Application.put_env(:neurow, :public_api_context_path, "/context_path")
+      on_exit(fn -> Application.put_env(:neurow, :public_api_context_path, "") end)
+      :ok
+    end
+
+    test "the authentication logic is applyed to urls prefixed by the context path" do
+      conn =
+        conn(:get, "/v1/subscribe")
+
+      call(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 403}
+        assert_receive {:chunk, body}
+
+        sse_event = parse_sse_event(body)
+
+        assert sse_event.event == "neurow_error_forbidden"
+      end)
+    end
+
+    test "The subscribe url is prefixed with the context path" do
+      conn =
+        conn(:get, "/context_path/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+        )
+
+      call(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+        publish_message("test_issuer1-test_topic1", 1234, "A message")
+
+        assert_receive {:chunk, first_event}
+
+        assert parse_sse_event(first_event) == %{
+                 id: "1234",
+                 event: "test-event",
+                 data: "A message"
+               }
+      end)
+    end
+  end
+
   defp publish_message(topic, id, message) do
     :ok =
-      Neurow.ReceiverShardManager.broadcast(topic, %Neurow.InternalApi.Message{
+      Neurow.Broker.ReceiverShardManager.broadcast(topic, %Neurow.Broker.Message{
         event: "test-event",
         payload: message,
         timestamp: id

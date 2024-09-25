@@ -2,7 +2,7 @@ defmodule Neurow.InternalApi.EndpointTest do
   use ExUnit.Case
   use Plug.Test
 
-  alias Neurow.InternalApi.Message
+  alias Neurow.Broker.Message
 
   import JwtHelper
 

@@ -3,7 +3,7 @@ defmodule Neurow.InternalApi.Endpoint do
   require Node
   import Plug.Conn
   alias Neurow.InternalApi.PublishRequest
-  alias Neurow.InternalApi.Message
+  alias Neurow.Broker.Message
 
   use Plug.Router
   plug(MetricsPlugExporter)
@@ -64,7 +64,7 @@ defmodule Neurow.InternalApi.Endpoint do
   end
 
   get "/history/:topic" do
-    history = Neurow.ReceiverShardManager.get_history(topic)
+    history = Neurow.Broker.ReceiverShardManager.get_history(topic)
 
     history =
       Enum.map(history, fn {_, message} ->
@@ -87,7 +87,7 @@ defmodule Neurow.InternalApi.Endpoint do
         Enum.each(topics, fn topic ->
           Enum.each(messages, fn message ->
             :ok =
-              Neurow.ReceiverShardManager.broadcast(topic, %Message{
+              Neurow.Broker.ReceiverShardManager.broadcast(topic, %Message{
                 message
                 | timestamp: message.timestamp || publish_timestamp
               })

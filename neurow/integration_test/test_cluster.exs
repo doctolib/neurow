@@ -44,7 +44,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
   A call to this method is expected in the setup block of integration tests
   """
   def flush_history do
-    GenServer.call(__MODULE__, :flush__history)
+    GenServer.call(__MODULE__, :flush_history)
   end
 
   # -- GenServer callbacks, should not be used directly --
@@ -87,11 +87,11 @@ defmodule Neurow.IntegrationTest.TestCluster do
     end
   end
 
-  def handle_call(:flush__history, _from, state) do
+  def handle_call(:flush_history, _from, state) do
     state.nodes
     |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
       Task.async(fn ->
-        :ok = :rpc.call(node, Neurow.ReceiverShardManager, :flush_history, [])
+        :ok = :rpc.call(node, Neurow.Broker.ReceiverShardManager, :flush_history, [])
       end)
     end)
     |> Enum.map(fn task -> Task.await(task, 2_000) end)
