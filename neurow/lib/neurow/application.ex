@@ -1,6 +1,8 @@
 defmodule Neurow.Application do
   @moduledoc false
 
+  @mix_env Mix.env()
+
   require Logger
 
   use Application
@@ -35,7 +37,7 @@ defmodule Neurow.Application do
         history_min_duration: history_min_duration,
         cluster_topologies: cluster_topologies
       }) do
-    Logger.warning("Current host #{node()}, environment: #{Mix.env()}")
+    Logger.warning("Current host #{node()}, environment: #{@mix_env}")
     Logger.warning("Starting internal API on port #{internal_api_port}")
 
     base_public_api_http_config = [
