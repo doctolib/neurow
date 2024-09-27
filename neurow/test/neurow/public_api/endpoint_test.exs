@@ -371,6 +371,24 @@ defmodule Neurow.PublicApi.EndpointTest do
         assert event_2.event == "ping"
       end)
     end
+
+    test "the client is disconnected when the JWT token expires" do
+      conn =
+        conn(:get, "/v1/subscribe")
+        |> put_req_header(
+          "authorization",
+          "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1", duration_s: 3)}"
+        )
+
+      call(Neurow.PublicApi.Endpoint, conn, fn ->
+        assert_receive {:send_chunked, 200}
+
+        assert_receive {:chunk, body}, 5_000
+        assert parse_sse_event(body).event == "credentials_expired"
+
+        assert_receive {:DOWN, _reference, :process, _pid, :normal}
+      end)
+    end
   end
 
   describe "preflight requests" do

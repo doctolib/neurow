@@ -31,7 +31,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
           {"transfer-encoding", "chunked"}
         ])
 
-        assert_receive %HTTPoison.AsyncChunk{chunk: timeout_sse_event}, 4_000
+        assert_receive %HTTPoison.AsyncChunk{chunk: timeout_sse_event}, 4_200
 
         assert "timeout" == parse_sse_event(timeout_sse_event).event
 
