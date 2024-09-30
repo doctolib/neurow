@@ -42,6 +42,9 @@ defmodule SseUser do
 
         wait_for_messages(state, request_id, expected_messages)
 
+      {:dead} ->
+        Logger.error("#{header(state)} SSE connection died")
+
       other_message ->
         Logger.error("#{header(state)} Unexpected message: #{inspect(other_message)}")
     end
@@ -175,7 +178,8 @@ defmodule SseUser do
         other_message ->
           Logger.error("#{log_context.()} Unexpected message #{inspect(other_message)}")
           :ok = :httpc.cancel_request(request_id)
-          raise("#{log_context.()} Unexpected message: #{inspect(other_message)}")
+          Stats.inc_msg_received_http_error()
+          send(main_process, {:dead})
       end
 
       loop(log_context, request_id, main_process)
