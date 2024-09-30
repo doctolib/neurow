@@ -10,6 +10,7 @@ defmodule LoadTest.Main do
       :sse_jwt_secret,
       :sse_jwt_audience,
       :sse_jwt_expiration,
+      :sse_user_agent,
       :publish_url,
       :publish_timeout,
       :publish_jwt_issuer,
@@ -32,6 +33,7 @@ defmodule LoadTest.Main do
 
     {:ok, sse_timeout} = Application.fetch_env(:load_test, :sse_timeout)
     {:ok, sse_url} = Application.fetch_env(:load_test, :sse_url)
+    {:ok, sse_user_agent} = Application.fetch_env(:load_test, :sse_user_agent)
     {:ok, sse_jwt_issuer} = Application.fetch_env(:load_test, :sse_jwt_issuer)
     {:ok, sse_jwt_secret} = Application.fetch_env(:load_test, :sse_jwt_secret)
     {:ok, sse_jwt_audience} = Application.fetch_env(:load_test, :sse_jwt_audience)
@@ -57,6 +59,7 @@ defmodule LoadTest.Main do
     context = %InjectionContext{
       sse_timeout: sse_timeout,
       sse_url: sse_url,
+      sse_user_agent: sse_user_agent,
       sse_jwt_issuer: sse_jwt_issuer,
       sse_jwt_secret: JOSE.JWK.from_oct(sse_jwt_secret),
       sse_jwt_audience: sse_jwt_audience,

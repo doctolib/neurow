@@ -7,6 +7,7 @@ config :logger, :console,
 config :load_test, port: String.to_integer(System.get_env("PORT") || "2999")
 config :load_test, nb_user: String.to_integer(System.get_env("NB_USER") || "1")
 
+config :load_test, sse_user_agent: System.get_env("SSE_USER_AGENT") || "neurow_load_test/1.0"
 config :load_test, sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "15000")
 config :load_test, sse_url: System.get_env("SSE_URL") || "http://localhost:4000/v1/subscribe"
 config :load_test, sse_jwt_issuer: System.get_env("SSE_JWT_ISSUER") || "test_issuer1"

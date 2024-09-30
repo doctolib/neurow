@@ -32,7 +32,10 @@ defmodule SseUser do
     signed = JOSE.JWT.sign(context.sse_jwt_secret, jws, jwt)
     {%{alg: :jose_jws_alg_hmac}, compact_signed} = JOSE.JWS.compact(signed)
 
-    [{["Authorization"], "Bearer #{compact_signed}"}]
+    [
+      {["Authorization"], "Bearer #{compact_signed}"},
+      {["User-Agent"], context.sse_user_agent},
+    ]
   end
 
   def run(context, user_name, topic, expected_messages) do
