@@ -77,6 +77,7 @@ defmodule SseUser do
       {:http, {_, :stream, msg}} ->
         msg = String.trim(msg)
         Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
+
         if msg =~ "event: ping" do
           wait_for_messages(state, request_id, [first_message | remaining_messages])
         else
