@@ -7,7 +7,9 @@ defmodule LoadTest.User.Publisher do
       :topic,
       :publish_url,
       :publish_timeout,
-      :headers,
+      :publish_jwt_issuer,
+      :publish_jwt_secret,
+      :publish_jwt_audience,
       :delay_between_messages_min,
       :delay_between_messages_max,
       :start_time
@@ -28,7 +30,9 @@ defmodule LoadTest.User.Publisher do
       topic: topic,
       publish_url: context.publish_url,
       publish_timeout: context.publish_timeout,
-      headers: build_headers(context),
+      publish_jwt_issuer: context.publish_jwt_issuer,
+      publish_jwt_secret: context.publish_jwt_secret,
+      publish_jwt_audience: context.publish_jwt_audience,
       delay_between_messages_min: context.delay_between_messages_min,
       delay_between_messages_max: context.delay_between_messages_max,
       start_time: start_time
@@ -41,22 +45,22 @@ defmodule LoadTest.User.Publisher do
     run(state, messages)
   end
 
-  defp build_headers(context) do
+  defp build_headers(state) do
     iat = :os.system_time(:second)
     exp = iat + 60 * 15 - 1
 
     jwt = %{
-      "iss" => context.publish_jwt_issuer,
+      "iss" => state.publish_jwt_issuer,
       "exp" => exp,
       "iat" => iat,
-      "aud" => context.publish_jwt_audience
+      "aud" => state.publish_jwt_audience
     }
 
     jws = %{
       "alg" => "HS256"
     }
 
-    signed = JOSE.JWT.sign(context.publish_jwt_secret, jws, jwt)
+    signed = JOSE.JWT.sign(state.publish_jwt_secret, jws, jwt)
     {%{alg: :jose_jws_alg_hmac}, compact_signed} = JOSE.JWS.compact(signed)
 
     [
@@ -98,7 +102,7 @@ defmodule LoadTest.User.Publisher do
       })
 
     result =
-      Finch.build(:post, state.publish_url, state.headers, body)
+      Finch.build(:post, state.publish_url, build_headers(state), body)
       |> Finch.request(PublishFinch,
         receive_timeout: state.publish_timeout,
         pool_timeout: state.publish_timeout
