@@ -8,7 +8,6 @@ data "aws_ami" "ami-x86" {
   owners      = ["137112412989"]
 }
 
-
 data "aws_subnet" "first_public" {
   id = var.public_subnet_ids[0]
 }
