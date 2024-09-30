@@ -9,6 +9,7 @@ defmodule LoadTest.Main do
       :sse_jwt_issuer,
       :sse_jwt_secret,
       :sse_jwt_audience,
+      :sse_jwt_expiration,
       :publish_url,
       :publish_timeout,
       :publish_jwt_issuer,
@@ -34,6 +35,7 @@ defmodule LoadTest.Main do
     {:ok, sse_jwt_issuer} = Application.fetch_env(:load_test, :sse_jwt_issuer)
     {:ok, sse_jwt_secret} = Application.fetch_env(:load_test, :sse_jwt_secret)
     {:ok, sse_jwt_audience} = Application.fetch_env(:load_test, :sse_jwt_audience)
+    {:ok, sse_jwt_expiration} = Application.fetch_env(:load_test, :sse_jwt_expiration)
 
     {:ok, publish_url} = Application.fetch_env(:load_test, :publish_url)
     {:ok, publish_timeout} = Application.fetch_env(:load_test, :publish_timeout)
@@ -58,6 +60,7 @@ defmodule LoadTest.Main do
       sse_jwt_issuer: sse_jwt_issuer,
       sse_jwt_secret: JOSE.JWK.from_oct(sse_jwt_secret),
       sse_jwt_audience: sse_jwt_audience,
+      sse_jwt_expiration: sse_jwt_expiration,
       publish_url: publish_url,
       publish_timeout: publish_timeout,
       publish_jwt_issuer: publish_jwt_issuer,
