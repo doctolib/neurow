@@ -40,10 +40,13 @@ defmodule JwtHelper do
     signed_jwt_token(jwt_payload, key)
   end
 
-  def compute_jwt_token_in_req_header_public_api(topic, issuer \\ "test_issuer1") do
+  def compute_jwt_token_in_req_header_public_api(topic, options \\ []) do
+    issuer = Keyword.get(options, :issuer, "test_issuer1")
+    duration_s = Keyword.get(options, :duration_s, 2 * 60 - 1)
+
     key = JOSE.JWK.from_oct("966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc")
     iat = :os.system_time(:second)
-    exp = iat + (2 * 60 - 1)
+    exp = iat + duration_s
 
     jwt_payload = %{
       "iss" => issuer,
