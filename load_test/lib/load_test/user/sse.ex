@@ -30,7 +30,7 @@ defmodule SseUser do
       end
     }
 
-    SseConnection.start(context, header(state), url, topic)
+    SseConnection.start(context, fn -> header(state) end, url, topic)
 
     receive do
       {:sse_connected, server, request_id} ->
@@ -126,7 +126,7 @@ defmodule SseUser do
 
     defp build_http_headers(context, topic) do
       iat = :os.system_time(:second)
-      exp = iat + 60 * 2 - 1
+      exp = iat + context.sse_jwt_expiration
 
       jwt = %{
         "iss" => context.sse_jwt_issuer,
@@ -149,10 +149,10 @@ defmodule SseUser do
     defp loop(log_context, request_id, main_process) do
       receive do
         {:http, {_, {:error, msg}}} ->
-          Logger.error("#{log_context} Http error: #{inspect(msg)}")
+          Logger.error("#{log_context.()} Http error: #{inspect(msg)}")
           :ok = :httpc.cancel_request(request_id)
           Stats.inc_msg_received_http_error()
-          raise("#{log_context} Http error")
+          raise("#{log_context.()} Http error")
 
         {:http, {_, :stream_start, headers}} ->
           {~c"x-sse-server", server} = List.keyfind(headers, ~c"x-sse-server", 0)
@@ -173,9 +173,9 @@ defmodule SseUser do
           end
 
         other_message ->
-          Logger.error("#{log_context} Unexpected message #{inspect(other_message)}")
+          Logger.error("#{log_context.()} Unexpected message #{inspect(other_message)}")
           :ok = :httpc.cancel_request(request_id)
-          raise("#{log_context} Unexpected message")
+          raise("#{log_context.()} Unexpected message")
       end
 
       loop(log_context, request_id, main_process)

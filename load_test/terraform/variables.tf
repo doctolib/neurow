@@ -18,7 +18,7 @@ variable "dd_tags" {
 
 variable "instance_type" {
   type    = string
-  default = "c6i.large"
+  default = "c7i.2xlarge"
 }
 
 variable "desired_capacity" {
@@ -38,12 +38,12 @@ variable "max_size" {
 
 variable "nb_users" {
   type    = number
-  default = 5000
+  default = 7500
 }
 
 variable "neurow_revision" {
   type    = string
-  default = ""
+  default = "main"
 }
 
 variable "neurow_config" {

@@ -2,7 +2,7 @@ locals {
   user_data = <<-EOF
 #!/bin/bash -e
 
-yum install -y ncurses-compat-libs git jq htop
+yum install -y ncurses-compat-libs git jq htop gcc gcc-c++
 wget https://binaries2.erlang-solutions.com/centos/7/esl-erlang_26.2.1_1~centos~7_x86_64.rpm -O /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
 rpm -ivh /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
 

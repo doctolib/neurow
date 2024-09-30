@@ -34,7 +34,7 @@ defmodule Neurow.PublicApi.Endpoint do
 
   defp subscribe(conn) do
     case conn.assigns[:jwt_payload] do
-      %{"iss" => issuer, "sub" => sub} ->
+      %{"iss" => issuer, "sub" => sub, "exp" => exp} ->
         topic = "#{issuer}-#{sub}"
 
         timeout =
@@ -79,7 +79,7 @@ defmodule Neurow.PublicApi.Endpoint do
             Logger.debug("Client subscribed to #{topic}")
 
             last_message = :os.system_time(:millisecond)
-            conn |> loop(timeout, keep_alive, last_message, last_message)
+            conn |> loop(timeout, keep_alive, last_message, last_message, exp)
             Logger.debug("Client disconnected from #{topic}")
             conn
         end
@@ -185,11 +185,6 @@ defmodule Neurow.PublicApi.Endpoint do
     {_, message} = first
 
     if message.timestamp > last_event_id do
-      if sent == 0 do
-        # Workaround: avoid to loose messages in tests
-        Process.sleep(1)
-      end
-
       conn = write_chunk(conn, message)
       process_history(conn, last_event_id, sent + 1, rest)
     else
@@ -201,28 +196,33 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  defp loop(conn, sse_timeout, keep_alive, last_message, last_ping) do
+  defp loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp) do
     receive do
       {:pubsub_message, message} ->
         conn = write_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
-        loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message)
+        loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
     after
       1000 ->
-        now = :os.system_time(:millisecond)
+        now_ms = :os.system_time(:millisecond)
 
         cond do
           # SSE Timeout
-          now - last_message > sse_timeout ->
+          now_ms - last_message > sse_timeout ->
             Logger.debug("Client disconnected due to inactivity")
             chunk(conn, "event: timeout\n\n")
             :timeout
 
           # SSE Keep alive, send a ping
-          now - last_ping > keep_alive ->
+          now_ms - last_ping > keep_alive ->
             chunk(conn, "event: ping\n\n")
-            loop(conn, sse_timeout, keep_alive, last_message, now)
+            loop(conn, sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
+
+          # JWT token expired
+          jwt_exp * 1000 < now_ms ->
+            chunk(conn, "event: credentials_expired\n\n")
+            :close
 
           # We need to stop
           StopListener.close_connections?() ->
@@ -231,7 +231,7 @@ defmodule Neurow.PublicApi.Endpoint do
 
           # Nothing
           true ->
-            loop(conn, sse_timeout, keep_alive, last_message, last_ping)
+            loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
         end
     end
   end

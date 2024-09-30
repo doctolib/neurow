@@ -12,6 +12,9 @@ config :load_test, sse_url: System.get_env("SSE_URL") || "http://localhost:4000/
 config :load_test, sse_jwt_issuer: System.get_env("SSE_JWT_ISSUER") || "test_issuer1"
 
 config :load_test,
+  sse_jwt_expiration: String.to_integer(System.get_env("SSE_JWT_EXPIRATION") || "86400")
+
+config :load_test,
   sse_jwt_secret:
     System.get_env("SSE_JWT_SECRET") || "966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc"
 
