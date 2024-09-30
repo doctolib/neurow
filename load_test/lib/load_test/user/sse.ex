@@ -77,7 +77,12 @@ defmodule SseUser do
       {:http, {_, :stream, msg}} ->
         msg = String.trim(msg)
         Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
-        check_message(state, msg, first_message)
+
+        if msg =~ "event: ping" do
+          wait_for_messages(state, request_id, [first_message | remaining_messages])
+        else
+          check_message(state, msg, first_message)
+        end
 
       {:http, {_, :stream_start, headers}} ->
         {~c"x-sse-server", server} = List.keyfind(headers, ~c"x-sse-server", 0)
