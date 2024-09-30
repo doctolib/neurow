@@ -25,7 +25,9 @@ defmodule Mix.Tasks.GenerateJwtToken do
 
   def run(args) do
     {parsed_args, _args, _invalid} =
-      OptionParser.parse(args, strict: [api: :string, issuer: :string, topic: :string, expiration: :integer])
+      OptionParser.parse(args,
+        strict: [api: :string, issuer: :string, topic: :string, expiration: :integer]
+      )
 
     Neurow.Configuration.start_link(%{})
 
