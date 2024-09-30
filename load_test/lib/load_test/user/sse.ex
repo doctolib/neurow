@@ -175,7 +175,7 @@ defmodule SseUser do
         other_message ->
           Logger.error("#{log_context.()} Unexpected message #{inspect(other_message)}")
           :ok = :httpc.cancel_request(request_id)
-          raise("#{log_context.()} Unexpected message")
+          raise("#{log_context.()} Unexpected message: #{inspect(other_message)}")
       end
 
       loop(log_context, request_id, main_process)
