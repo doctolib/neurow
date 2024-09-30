@@ -15,7 +15,7 @@ defmodule SseUser do
 
   defp build_headers(context, topic) do
     iat = :os.system_time(:second)
-    exp = iat + 60 * 2 - 1
+    exp = iat + context.sse_jwt_expiration
 
     jwt = %{
       "iss" => context.sse_jwt_issuer,
