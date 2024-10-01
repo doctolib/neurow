@@ -80,8 +80,6 @@ defmodule Neurow.PublicApi.Endpoint do
 
             last_message = :os.system_time(:millisecond)
             conn |> loop(timeout, keep_alive, last_message, last_message, exp)
-            Logger.debug("Client disconnected from #{topic}")
-            conn
         end
 
       _ ->
@@ -203,6 +201,8 @@ defmodule Neurow.PublicApi.Endpoint do
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+      _ -> # Consume useless messages to avoid memory overflow
+        loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
     after
       1000 ->
         now_ms = :os.system_time(:millisecond)
@@ -212,7 +212,6 @@ defmodule Neurow.PublicApi.Endpoint do
           now_ms - last_message > sse_timeout ->
             Logger.debug("Client disconnected due to inactivity")
             chunk(conn, "event: timeout\n\n")
-            :timeout
 
           # SSE Keep alive, send a ping
           now_ms - last_ping > keep_alive ->
@@ -222,12 +221,10 @@ defmodule Neurow.PublicApi.Endpoint do
           # JWT token expired
           jwt_exp * 1000 < now_ms ->
             chunk(conn, "event: credentials_expired\n\n")
-            :close
 
           # We need to stop
           StopListener.close_connections?() ->
             chunk(conn, "event: reconnect\n\n")
-            :close
 
           # Nothing
           true ->
