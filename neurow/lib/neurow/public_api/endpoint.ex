@@ -237,7 +237,7 @@ defmodule Neurow.PublicApi.Endpoint do
   end
 
   defp write_raw_chunk(conn, raw_message) do
-    {:ok, conn } = chunk(conn, "#{raw_message}\n\n")
+    {:ok, conn} = chunk(conn, "#{raw_message}\n\n")
     conn
   end
 
