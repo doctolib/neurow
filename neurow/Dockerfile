@@ -25,7 +25,9 @@ RUN mix release
 FROM ${BUILDER_IMAGE}
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl dnsutils
+  && apt-get install -y --no-install-recommends curl dnsutils \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /app
 WORKDIR /app
