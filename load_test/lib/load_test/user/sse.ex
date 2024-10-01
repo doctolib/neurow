@@ -34,7 +34,7 @@ defmodule SseUser do
 
     [
       {["Authorization"], "Bearer #{compact_signed}"},
-      {["User-Agent"], context.sse_user_agent},
+      {["User-Agent"], context.sse_user_agent}
     ]
   end
 

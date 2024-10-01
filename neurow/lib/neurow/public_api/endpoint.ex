@@ -201,7 +201,9 @@ defmodule Neurow.PublicApi.Endpoint do
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
-      _ -> # Consume useless messages to avoid memory overflow
+
+      # Consume useless messages to avoid memory overflow
+      _ ->
         conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
     after
       1000 ->
