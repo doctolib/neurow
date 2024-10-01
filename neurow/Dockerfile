@@ -15,7 +15,7 @@ ENV MIX_ENV=prod
 RUN mix local.hex --force
 
 COPY mix.exs mix.lock /app/
-RUN mix deps.get
+RUN mix deps.get deps.compile
 
 COPY config /app/config/
 COPY lib /app/lib/
