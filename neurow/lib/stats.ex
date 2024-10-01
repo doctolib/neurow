@@ -8,8 +8,13 @@ defmodule Stats do
     )
 
     Gauge.declare(
-      name: :connections,
-      help: "SSE connections"
+      name: :connections_created,
+      help: "SSE connections created"
+    )
+
+    Gauge.declare(
+      name: :connections_disconnected,
+      help: "SSE connections disconnected"
     )
 
     Gauge.declare(
@@ -30,7 +35,8 @@ defmodule Stats do
     )
 
     Gauge.set([name: :current_connections], 0)
-    Gauge.set([name: :connections], 0)
+    Gauge.set([name: :connections_created], 0)
+    Gauge.set([name: :connections_disconnected], 0)
     Gauge.set([name: :jwt_errors, labels: [:public]], 0)
     Gauge.set([name: :jwt_errors, labels: [:internal]], 0)
     Gauge.set([name: :messages, labels: [:received]], 0)
@@ -39,11 +45,12 @@ defmodule Stats do
   end
 
   def inc_connections() do
+    Gauge.inc(name: :connections_created)
     Gauge.inc(name: :current_connections)
-    Gauge.inc(name: :connections)
   end
 
   def dec_connections() do
+    Gauge.inc(name: :connections_disconnected)
     Gauge.dec(name: :current_connections)
   end
 
