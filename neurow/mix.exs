@@ -40,6 +40,7 @@ defmodule Neurow.MixProject do
       {:prometheus_plugs, "~> 1.0"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 1.1"},
+      {:observer_cli, "~> 1.7"},
       {:httpoison, "~> 2.0", only: [:test]}
     ]
   end
