@@ -242,13 +242,10 @@ defmodule Neurow.PublicApi.Endpoint do
   end
 
   defp write_data_chunk(conn, message) do
-    {:ok, conn} =
-      chunk(
-        conn,
-        "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}\n\n"
-      )
-
     conn
+    |> write_raw_chunk(
+      "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}"
+    )
   end
 
   defp preflight_request_max_age(),
