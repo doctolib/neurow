@@ -10,7 +10,7 @@ defmodule SSEMonitor do
   def init(conn) do
     Stats.inc_connections()
     Process.flag(:trap_exit, true)
-    {:ok, %{conn: conn}}
+    {:ok, nil}
   end
 
   @impl true
