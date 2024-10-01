@@ -1,6 +1,7 @@
-ARG BUILDER_IMAGE=elixir:1.17-slim
+ARG BUILDER_IMAGE=elixir
+ARG VERSION=1.17-slim
 
-FROM ${BUILDER_IMAGE} AS builder
+FROM ${BUILDER_IMAGE}:${VERSION} AS builder
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends git build-essential ca-certificates \
@@ -22,7 +23,7 @@ COPY lib /app/lib/
 ARG GIT_COMMIT_SHA1=no_commit
 RUN mix release
 
-FROM ${BUILDER_IMAGE}
+FROM ${BUILDER_IMAGE}:${VERSION}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl dnsutils \
