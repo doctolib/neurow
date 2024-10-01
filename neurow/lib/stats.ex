@@ -30,6 +30,11 @@ defmodule Stats do
       help: "History rotate counter"
     )
 
+    Gauge.declare(
+      name: :memory_usage,
+      help: "Memory usage"
+    )
+
     Gauge.set([name: :current_connections], 0)
     Gauge.set([name: :connections, labels: [:created]], 0)
     Gauge.set([name: :connections, labels: [:released]], 0)
@@ -68,5 +73,9 @@ defmodule Stats do
 
   def inc_history_rotate() do
     Gauge.inc(name: :history_rotate)
+  end
+
+  def set_memory_usage(value) do
+    Gauge.set([name: :memory_usage], value)
   end
 end
