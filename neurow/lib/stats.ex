@@ -9,6 +9,7 @@ defmodule Stats do
 
     Gauge.declare(
       name: :connections,
+      labels: [:kind],
       help: "SSE connections"
     )
 
