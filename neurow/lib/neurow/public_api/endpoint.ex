@@ -200,9 +200,9 @@ defmodule Neurow.PublicApi.Endpoint do
         conn = write_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
-        loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+        conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
       _ -> # Consume useless messages to avoid memory overflow
-        loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
+        conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
     after
       1000 ->
         now_ms = :os.system_time(:millisecond)
@@ -211,24 +211,25 @@ defmodule Neurow.PublicApi.Endpoint do
           # SSE Timeout
           now_ms - last_message > sse_timeout ->
             Logger.debug("Client disconnected due to inactivity")
-            chunk(conn, "event: timeout\n\n")
+            conn |> chunk("event: timeout\n\n")
 
           # SSE Keep alive, send a ping
           now_ms - last_ping > keep_alive ->
-            chunk(conn, "event: ping\n\n")
-            loop(conn, sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
+            conn
+            |> chunk("event: ping\n\n")
+            |> loop(sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
 
           # JWT token expired
           jwt_exp * 1000 < now_ms ->
-            chunk(conn, "event: credentials_expired\n\n")
+            conn |> chunk("event: credentials_expired\n\n")
 
           # We need to stop
           StopListener.close_connections?() ->
-            chunk(conn, "event: reconnect\n\n")
+            conn |> chunk("event: reconnect\n\n")
 
           # Nothing
           true ->
-            loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
+            conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
         end
     end
   end
