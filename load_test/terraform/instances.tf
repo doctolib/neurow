@@ -160,6 +160,24 @@ resource "aws_security_group_rule" "neurow_load_test_outbound" {
   security_group_id = aws_security_group.neurow_load_test.id
 }
 
+resource "aws_security_group_rule" "neurow_load_test_inbound_lb" {
+  type                     = "ingress"
+  from_port                = 2999
+  to_port                  = 2999
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.internal_lb.id
+  security_group_id        = aws_security_group.neurow_load_test.id
+}
+
+resource "aws_security_group_rule" "neurow_load_test_inbound_self" {
+  type                     = "ingress"
+  from_port                = 2999
+  to_port                  = 2999
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.neurow_load_test.id
+  security_group_id        = aws_security_group.neurow_load_test.id
+}
+
 resource "aws_autoscaling_group" "neurow_load_test" {
   name             = "${var.resource_prefix}-load-test"
   desired_capacity = var.desired_capacity
@@ -180,5 +198,7 @@ resource "aws_autoscaling_group" "neurow_load_test" {
     version = aws_launch_template.neurow_load_test.latest_version
   }
 
-  health_check_type = "EC2"
+  target_group_arns = [aws_lb_target_group.internal.arn]
+
+  health_check_type = "ELB"
 }
