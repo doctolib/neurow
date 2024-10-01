@@ -16,7 +16,7 @@ RUN mix local.hex --force
 
 COPY mix.exs mix.lock /app/
 RUN mix deps.get \
-  && deps.compile
+  && mix deps.compile
 
 COPY config /app/config/
 COPY lib /app/lib/
