@@ -183,7 +183,7 @@ defmodule Neurow.PublicApi.Endpoint do
     {_, message} = first
 
     if message.timestamp > last_event_id do
-      conn = write_chunk(conn, message)
+      conn = write_data_chunk(conn, message)
       process_history(conn, last_event_id, sent + 1, rest)
     else
       process_history(conn, last_event_id, sent, rest)
@@ -197,7 +197,7 @@ defmodule Neurow.PublicApi.Endpoint do
   defp loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp) do
     receive do
       {:pubsub_message, message} ->
-        conn = write_chunk(conn, message)
+        conn = write_data_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
         conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
@@ -213,21 +213,21 @@ defmodule Neurow.PublicApi.Endpoint do
           # SSE Timeout
           now_ms - last_message > sse_timeout ->
             Logger.debug("Client disconnected due to inactivity")
-            conn |> chunk("event: timeout\n\n")
+            conn |> write_raw_chunk("event: timeout")
 
           # SSE Keep alive, send a ping
           now_ms - last_ping > keep_alive ->
             conn
-            |> chunk("event: ping\n\n")
+            |> write_raw_chunk("event: ping")
             |> loop(sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
 
           # JWT token expired
           jwt_exp * 1000 < now_ms ->
-            conn |> chunk("event: credentials_expired\n\n")
+            conn |> write_raw_chunk("event: credentials_expired")
 
           # We need to stop
           StopListener.close_connections?() ->
-            conn |> chunk("event: reconnect\n\n")
+            conn |> write_raw_chunk("event: reconnect")
 
           # Nothing
           true ->
@@ -236,7 +236,12 @@ defmodule Neurow.PublicApi.Endpoint do
     end
   end
 
-  defp write_chunk(conn, message) do
+  defp write_raw_chunk(conn, raw_message) do
+    {:ok, conn } = chunk(conn, "#{raw_message}\n\n")
+    conn
+  end
+
+  defp write_data_chunk(conn, message) do
     {:ok, conn} =
       chunk(
         conn,
