@@ -55,7 +55,7 @@ defmodule SseUser do
       user_name: user_name,
       start_time: :os.system_time(:millisecond),
       all_messages: length(expected_messages),
-      current_message: -1,
+      current_message: 0,
       url: url,
       sse_timeout: context.sse_timeout,
       start_publisher_callback: fn ->
@@ -63,8 +63,7 @@ defmodule SseUser do
       end
     }
 
-    # Adding a padding message for the connection message
-    wait_for_messages(state, request_id, ["" | expected_messages])
+    wait_for_messages(state, request_id, expected_messages)
   end
 
   defp wait_for_messages(state, request_id, [first_message | remaining_messages]) do
@@ -82,8 +81,14 @@ defmodule SseUser do
         Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
 
         unless msg =~ "event: ping" do
-          check_message(state, msg, first_message)
+          if check_message(state, msg, first_message) == :error do
+            :ok = :httpc.cancel_request(request_id)
+            raise("#{header(state)} Message check error")
+          end
         end
+
+        state = Map.put(state, :current_message, state.current_message + 1)
+        wait_for_messages(state, request_id, remaining_messages)
 
       {:http, {_, :stream_start, headers}} ->
         {~c"x-sse-server", server} = List.keyfind(headers, ~c"x-sse-server", 0)
@@ -93,6 +98,8 @@ defmodule SseUser do
         end)
 
         state.start_publisher_callback.()
+
+        wait_for_messages(state, request_id, [first_message | remaining_messages])
 
       msg ->
         Logger.error("#{header(state)} Unexpected message #{inspect(msg)}")
@@ -109,9 +116,6 @@ defmodule SseUser do
         :ok = :httpc.cancel_request(request_id)
         raise("#{header(state)} Timeout waiting for message")
     end
-
-    state = Map.put(state, :current_message, state.current_message + 1)
-    wait_for_messages(state, request_id, remaining_messages)
   end
 
   defp wait_for_messages(state, request_id, []) do
@@ -140,17 +144,20 @@ defmodule SseUser do
 
       if message == expected_message do
         Stats.inc_msg_received_ok()
+        :ok
       else
         Stats.inc_msg_received_unexpected_message()
 
         Logger.error(
           "#{header(state)} Received unexpected message on url #{state.url}: #{inspect(received_message)} instead of #{expected_message}"
         )
+        :error
       end
     rescue
       e ->
         Logger.error("#{header(state)} #{inspect(e)}")
         Stats.inc_msg_received_error()
+        :error
     end
   end
 end

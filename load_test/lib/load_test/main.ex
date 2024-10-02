@@ -111,7 +111,9 @@ defmodule LoadTest.Main do
 
     Task.await(sse_task, :infinity)
 
-    run_virtual_user(context)
+    Task.Supervisor.start_child(LoadTest.TaskSupervisor, fn ->
+      run_virtual_user(context)
+    end)
   end
 
   def start_publisher(context, user_name, topic, messages) do
@@ -163,7 +165,7 @@ defmodule LoadTest.Main do
   end
 
   @impl true
-  def handle_info({_, :ok}, state) do
+  def handle_info(_, state) do
     {:noreply, state}
   end
 end

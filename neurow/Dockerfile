@@ -34,7 +34,7 @@ RUN apt-get update \
 RUN mkdir /app
 WORKDIR /app
 
-COPY start.sh  iex.sh /
+COPY start.sh iex.sh /
 COPY --from=builder /app/_build/prod/rel/neurow /app/
 
 ENV RELEASE_TMP=/tmp/
