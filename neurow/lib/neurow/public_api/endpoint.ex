@@ -196,61 +196,66 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  defp loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp) do
+  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp) do
     now_ms = :os.system_time(:millisecond)
 
-    next_ping_ms = last_ping_ts + keep_alive_ms - now_ms
-    timeout_ms = last_message_ts + sse_timeout_ms - now_ms
-    jwt_exp_ms = jwt_exp * 1000 - now_ms
+    cond do
+      # SSE Timeout
+      now_ms - last_message_ts > sse_timeout_ms ->
+        Logger.info("Client disconnected due to inactivity")
+        conn |> write_chunk("event: timeout")
 
-    # The erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
-    # so a small tolerance is addded, also a minimum of 100ms is set to avoid busy waiting
-    next_tick_ms = max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms]) + 20, 100)
-
-    receive do
-      {:pubsub_message, message} ->
-        conn = write_chunk(conn, message)
-        Stats.inc_msg_published()
-        new_last_message_ts = :os.system_time(:millisecond)
-
+      # SSE Keep alive, send a ping
+      now_ms - last_ping_ts > keep_alive_ms ->
         conn
-        |> loop(sse_timeout_ms, keep_alive_ms, new_last_message_ts, new_last_message_ts, jwt_exp)
+        |> write_chunk("event: ping")
+        |> loop(
+          sse_timeout_ms,
+          keep_alive_ms,
+          last_message_ts,
+          now_ms,
+          jwt_exp
+        )
 
-      {:shutdown, _value} ->
-        Logger.debug("Client on disconnected due to node shutdown")
-        conn |> write_chunk("event: node_shutdown")
+      # JWT token expired
+      jwt_exp * 1000 < now_ms ->
+        conn |> write_chunk("event: credentials_expired")
 
-      # Consume useless messages to avoid memory overflow
-      _ ->
-        conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
-    after
-      next_tick_ms ->
-        now_after_wait_ms = :os.system_time(:millisecond)
+      # Otherwise, let's wait for a message or the next tick
+      true ->
+        # Compute the waiting time before the next tick
+        next_ping_ms = last_ping_ts + keep_alive_ms - now_ms
+        timeout_ms = last_message_ts + sse_timeout_ms - now_ms
+        jwt_exp_ms = jwt_exp * 1000 - now_ms
 
-        cond do
-          # SSE Timeout
-          now_after_wait_ms - last_message_ts > sse_timeout_ms ->
-            Logger.info("Client disconnected due to inactivity")
-            conn |> write_chunk("event: timeout")
+        # The Erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
+        # So a small tolerance is added, also a minimum of 100ms is set to avoid busy waiting
+        next_tick_ms = max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms]) + 20, 100)
 
-          # SSE Keep alive, send a ping
-          now_after_wait_ms - last_ping_ts > keep_alive_ms ->
+        receive do
+          {:pubsub_message, message} ->
+            conn = write_chunk(conn, message)
+            Stats.inc_msg_published()
+            new_last_message_ts = :os.system_time(:millisecond)
+
             conn
-            |> write_chunk("event: ping")
             |> loop(
               sse_timeout_ms,
               keep_alive_ms,
-              last_message_ts,
-              now_after_wait_ms,
+              new_last_message_ts,
+              new_last_message_ts,
               jwt_exp
             )
 
-          # JWT token expired
-          jwt_exp * 1000 < now_after_wait_ms ->
-            conn |> write_chunk("event: credentials_expired")
+          {:shutdown, _value} ->
+            Logger.debug("Client on disconnected due to node shutdown")
+            conn |> write_chunk("event: node_shutdown")
 
-          # Nothing
-          true ->
+          # Consume useless messages to avoid memory overflow
+          _ ->
+            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
+        after
+          next_tick_ms ->
             conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
         end
     end
