@@ -51,6 +51,14 @@ echo "instances:
     - users
     - propagation_delay_sum
     - propagation_delay_count
+    - memory_usage
+    - erlang_vm_memory_atom_bytes_total
+    - erlang_vm_memory_bytes_total
+    - erlang_vm_memory_dets_tables
+    - erlang_vm_memory_ets_tables
+    - erlang_vm_memory_processes_bytes_total
+    - erlang_vm_memory_system_bytes_total
+    - erlang_vm_process_count
 " >> /etc/datadog-agent/conf.d/prometheus.d/conf.yaml
 service datadog-agent restart
 EOF
