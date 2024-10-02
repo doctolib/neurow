@@ -87,6 +87,7 @@ defmodule SseUser do
             :ok = :httpc.cancel_request(request_id)
             raise("#{header(state)} Message check error")
           end
+
           state = Map.put(state, :current_message, state.current_message + 1)
           wait_for_messages(state, request_id, remaining_messages)
         end
