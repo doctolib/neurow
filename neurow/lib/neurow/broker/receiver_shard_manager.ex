@@ -32,7 +32,6 @@ defmodule Neurow.Broker.ReceiverShardManager do
     )
 
     rotate()
-    Stats.set_memory_usage(:recon_alloc.memory(:usage))
     {:noreply, state}
   end
 

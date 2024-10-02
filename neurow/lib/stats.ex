@@ -43,6 +43,11 @@ defmodule Stats do
     Gauge.set([name: :messages, labels: [:received]], 0)
     Gauge.set([name: :messages, labels: [:published]], 0)
     Gauge.set([name: :history_rotate], 0)
+
+    Periodic.start_link(
+      run: fn -> set_memory_usage() end,
+      every: :timer.seconds(10)
+    )
   end
 
   def inc_connections() do
@@ -75,7 +80,7 @@ defmodule Stats do
     Gauge.inc(name: :history_rotate)
   end
 
-  def set_memory_usage(value) do
-    Gauge.set([name: :memory_usage], value)
+  def set_memory_usage() do
+    Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage))
   end
 end
