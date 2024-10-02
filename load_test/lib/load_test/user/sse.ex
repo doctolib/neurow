@@ -80,15 +80,16 @@ defmodule SseUser do
         msg = String.trim(msg)
         Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
 
-        unless msg =~ "event: ping" do
+        if msg =~ "event: ping" do
+          wait_for_messages(state, request_id, [first_message | remaining_messages])
+        else
           if check_message(state, msg, first_message) == :error do
             :ok = :httpc.cancel_request(request_id)
             raise("#{header(state)} Message check error")
           end
+          state = Map.put(state, :current_message, state.current_message + 1)
+          wait_for_messages(state, request_id, remaining_messages)
         end
-
-        state = Map.put(state, :current_message, state.current_message + 1)
-        wait_for_messages(state, request_id, remaining_messages)
 
       {:http, {_, :stream_start, headers}} ->
         {~c"x-sse-server", server} = List.keyfind(headers, ~c"x-sse-server", 0)
