@@ -185,7 +185,7 @@ defmodule Neurow.PublicApi.Endpoint do
     {_, message} = first
 
     if message.timestamp > last_event_id do
-      conn = write_chunk(conn, message)
+      conn = write_data_chunk(conn, message)
       process_history(conn, last_event_id, sent + 1, rest)
     else
       process_history(conn, last_event_id, sent, rest)
@@ -209,7 +209,7 @@ defmodule Neurow.PublicApi.Endpoint do
 
     receive do
       {:pubsub_message, message} ->
-        conn = write_chunk(conn, message)
+        conn = write_data_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message_ts = :os.system_time(:millisecond)
 
@@ -220,6 +220,7 @@ defmodule Neurow.PublicApi.Endpoint do
         Logger.debug("Client on disconnected due to node shutdown")
         conn |> write_chunk("event: node_shutdown")
 
+      # Consume useless messages to avoid memory overflow
       _ ->
         conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
     after

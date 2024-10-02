@@ -9,6 +9,7 @@ defmodule Stats do
 
     Gauge.declare(
       name: :connections,
+      labels: [:kind],
       help: "SSE connections"
     )
 
@@ -29,21 +30,33 @@ defmodule Stats do
       help: "History rotate counter"
     )
 
+    Gauge.declare(
+      name: :memory_usage,
+      help: "Memory usage"
+    )
+
     Gauge.set([name: :current_connections], 0)
-    Gauge.set([name: :connections], 0)
+    Gauge.set([name: :connections, labels: [:created]], 0)
+    Gauge.set([name: :connections, labels: [:released]], 0)
     Gauge.set([name: :jwt_errors, labels: [:public]], 0)
     Gauge.set([name: :jwt_errors, labels: [:internal]], 0)
     Gauge.set([name: :messages, labels: [:received]], 0)
     Gauge.set([name: :messages, labels: [:published]], 0)
     Gauge.set([name: :history_rotate], 0)
+
+    Periodic.start_link(
+      run: fn -> set_memory_usage() end,
+      every: :timer.seconds(10)
+    )
   end
 
   def inc_connections() do
+    Gauge.inc(name: :connections, labels: [:created])
     Gauge.inc(name: :current_connections)
-    Gauge.inc(name: :connections)
   end
 
   def dec_connections() do
+    Gauge.inc(name: :connections, labels: [:released])
     Gauge.dec(name: :current_connections)
   end
 
@@ -65,5 +78,9 @@ defmodule Stats do
 
   def inc_history_rotate() do
     Gauge.inc(name: :history_rotate)
+  end
+
+  def set_memory_usage() do
+    Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage))
   end
 end

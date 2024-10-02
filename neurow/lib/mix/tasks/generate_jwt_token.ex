@@ -25,40 +25,45 @@ defmodule Mix.Tasks.GenerateJwtToken do
 
   def run(args) do
     {parsed_args, _args, _invalid} =
-      OptionParser.parse(args, strict: [api: :string, issuer: :string, topic: :string])
+      OptionParser.parse(args,
+        strict: [api: :string, issuer: :string, topic: :string, expiration: :integer]
+      )
 
     Neurow.Configuration.start_link(%{})
 
-    case {parsed_args[:api], parsed_args[:issuer], parsed_args[:topic]} do
-      {"public", issuer, topic} when is_binary(issuer) and is_binary(topic) ->
+    case {parsed_args[:api], parsed_args[:issuer], parsed_args[:topic], parsed_args[:expiration]} do
+      {"public", issuer, topic, expiration} when is_binary(issuer) and is_binary(topic) ->
         IO.puts(
           Neurow.JwtAuthPlug.generate_jwt_token(
             issuer,
             &Neurow.Configuration.public_api_issuer_jwks/1,
             Neurow.Configuration.public_api_audience(),
-            topic
+            topic,
+            expiration || 3600 * 24
           )
         )
 
-      {"public", issuer, _topic} when is_nil(issuer) ->
+      {"public", issuer, _topic, _expiration} when is_nil(issuer) ->
         raise ArgumentError, message: "An issuer is expected"
 
-      {"public", _issuer, topic} when is_nil(topic) ->
+      {"public", _issuer, topic, _expiration} when is_nil(topic) ->
         raise ArgumentError, message: "A topic is expected"
 
-      {"internal", issuer, _topic} when is_binary(issuer) ->
+      {"internal", issuer, _topic, expiration} when is_binary(issuer) ->
         IO.puts(
           Neurow.JwtAuthPlug.generate_jwt_token(
             issuer,
             &Neurow.Configuration.internal_api_issuer_jwks/1,
-            Neurow.Configuration.internal_api_audience()
+            Neurow.Configuration.internal_api_audience(),
+            nil,
+            expiration || 3600 * 24
           )
         )
 
-      {"internal", issuer, _topic} when is_nil(issuer) ->
+      {"internal", issuer, _topic, _expiration} when is_nil(issuer) ->
         raise ArgumentError, message: "An issuer is expected"
 
-      {_other_api, _issuer, _topic} ->
+      {_other_api, _issuer, _topic, _expiration} ->
         raise ArgumentError,
           message: "Invalid api '#{parsed_args[:api]}', expecting 'public' or 'internal'"
     end

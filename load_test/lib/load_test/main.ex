@@ -9,6 +9,8 @@ defmodule LoadTest.Main do
       :sse_jwt_issuer,
       :sse_jwt_secret,
       :sse_jwt_audience,
+      :sse_jwt_expiration,
+      :sse_user_agent,
       :publish_url,
       :publish_timeout,
       :publish_jwt_issuer,
@@ -31,9 +33,11 @@ defmodule LoadTest.Main do
 
     {:ok, sse_timeout} = Application.fetch_env(:load_test, :sse_timeout)
     {:ok, sse_url} = Application.fetch_env(:load_test, :sse_url)
+    {:ok, sse_user_agent} = Application.fetch_env(:load_test, :sse_user_agent)
     {:ok, sse_jwt_issuer} = Application.fetch_env(:load_test, :sse_jwt_issuer)
     {:ok, sse_jwt_secret} = Application.fetch_env(:load_test, :sse_jwt_secret)
     {:ok, sse_jwt_audience} = Application.fetch_env(:load_test, :sse_jwt_audience)
+    {:ok, sse_jwt_expiration} = Application.fetch_env(:load_test, :sse_jwt_expiration)
 
     {:ok, publish_url} = Application.fetch_env(:load_test, :publish_url)
     {:ok, publish_timeout} = Application.fetch_env(:load_test, :publish_timeout)
@@ -55,9 +59,11 @@ defmodule LoadTest.Main do
     context = %InjectionContext{
       sse_timeout: sse_timeout,
       sse_url: sse_url,
+      sse_user_agent: sse_user_agent,
       sse_jwt_issuer: sse_jwt_issuer,
       sse_jwt_secret: JOSE.JWK.from_oct(sse_jwt_secret),
       sse_jwt_audience: sse_jwt_audience,
+      sse_jwt_expiration: sse_jwt_expiration,
       publish_url: publish_url,
       publish_timeout: publish_timeout,
       publish_jwt_issuer: publish_jwt_issuer,
@@ -105,7 +111,9 @@ defmodule LoadTest.Main do
 
     Task.await(sse_task, :infinity)
 
-    run_virtual_user(context)
+    Task.Supervisor.start_child(LoadTest.TaskSupervisor, fn ->
+      run_virtual_user(context)
+    end)
   end
 
   def start_publisher(context, user_name, topic, messages) do
@@ -157,7 +165,7 @@ defmodule LoadTest.Main do
   end
 
   @impl true
-  def handle_info({_, :ok}, state) do
+  def handle_info(_, state) do
     {:noreply, state}
   end
 end

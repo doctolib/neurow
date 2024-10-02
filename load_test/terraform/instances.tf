@@ -2,7 +2,7 @@ locals {
   user_data = <<-EOF
 #!/bin/bash -e
 
-yum install -y ncurses-compat-libs git jq htop
+yum install -y ncurses-compat-libs git jq htop gcc gcc-c++
 wget https://binaries2.erlang-solutions.com/centos/7/esl-erlang_26.2.1_1~centos~7_x86_64.rpm -O /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
 rpm -ivh /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
 
@@ -51,6 +51,14 @@ echo "instances:
     - users
     - propagation_delay_sum
     - propagation_delay_count
+    - memory_usage
+    - erlang_vm_memory_atom_bytes_total
+    - erlang_vm_memory_bytes_total
+    - erlang_vm_memory_dets_tables
+    - erlang_vm_memory_ets_tables
+    - erlang_vm_memory_processes_bytes_total
+    - erlang_vm_memory_system_bytes_total
+    - erlang_vm_process_count
 " >> /etc/datadog-agent/conf.d/prometheus.d/conf.yaml
 service datadog-agent restart
 EOF
@@ -160,6 +168,24 @@ resource "aws_security_group_rule" "neurow_load_test_outbound" {
   security_group_id = aws_security_group.neurow_load_test.id
 }
 
+resource "aws_security_group_rule" "neurow_load_test_inbound_lb" {
+  type                     = "ingress"
+  from_port                = 2999
+  to_port                  = 2999
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.internal_lb.id
+  security_group_id        = aws_security_group.neurow_load_test.id
+}
+
+resource "aws_security_group_rule" "neurow_load_test_inbound_self" {
+  type                     = "ingress"
+  from_port                = 2999
+  to_port                  = 2999
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.neurow_load_test.id
+  security_group_id        = aws_security_group.neurow_load_test.id
+}
+
 resource "aws_autoscaling_group" "neurow_load_test" {
   name             = "${var.resource_prefix}-load-test"
   desired_capacity = var.desired_capacity
@@ -180,5 +206,7 @@ resource "aws_autoscaling_group" "neurow_load_test" {
     version = aws_launch_template.neurow_load_test.latest_version
   }
 
-  health_check_type = "EC2"
+  target_group_arns = [aws_lb_target_group.internal.arn]
+
+  health_check_type = "ELB"
 }

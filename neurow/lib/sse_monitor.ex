@@ -2,15 +2,15 @@ defmodule SSEMonitor do
   require Logger
   use GenServer
 
-  def start_link(conn) do
-    GenServer.start_link(__MODULE__, conn)
+  def start_link(init) do
+    GenServer.start_link(__MODULE__, init)
   end
 
   @impl true
-  def init(conn) do
+  def init(_) do
     Stats.inc_connections()
     Process.flag(:trap_exit, true)
-    {:ok, %{conn: conn}}
+    {:ok, nil}
   end
 
   @impl true
