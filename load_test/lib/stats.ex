@@ -34,8 +34,16 @@ defmodule Stats do
     Gauge.set([name: :messages, labels: [:published, :ok]], 0)
     Gauge.set([name: :messages, labels: [:published, :error]], 0)
 
+    Gauge.declare(
+      name: :memory_usage,
+      help: "Memory usage"
+    )
+
     Periodic.start_link(
-      run: fn -> Summary.reset(name: :propagation_delay) end,
+      run: fn ->
+        set_memory_usage()
+        Summary.reset(name: :propagation_delay)
+      end,
       every: :timer.seconds(10)
     )
   end
@@ -86,5 +94,9 @@ defmodule Stats do
 
   def observe_propagation(delay) do
     Summary.observe([name: :propagation_delay], delay)
+  end
+
+  defp set_memory_usage() do
+    Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage))
   end
 end

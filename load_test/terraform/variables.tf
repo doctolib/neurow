@@ -38,7 +38,7 @@ variable "max_size" {
 
 variable "nb_users" {
   type    = number
-  default = 7500
+  default = 20000
 }
 
 variable "neurow_revision" {

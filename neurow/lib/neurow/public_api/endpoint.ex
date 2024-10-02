@@ -80,8 +80,6 @@ defmodule Neurow.PublicApi.Endpoint do
 
             last_message = :os.system_time(:millisecond)
             conn |> loop(timeout, keep_alive, last_message, last_message, exp)
-            Logger.debug("Client disconnected from #{topic}")
-            conn
         end
 
       _ ->
@@ -185,7 +183,7 @@ defmodule Neurow.PublicApi.Endpoint do
     {_, message} = first
 
     if message.timestamp > last_event_id do
-      conn = write_chunk(conn, message)
+      conn = write_data_chunk(conn, message)
       process_history(conn, last_event_id, sent + 1, rest)
     else
       process_history(conn, last_event_id, sent, rest)
@@ -199,10 +197,14 @@ defmodule Neurow.PublicApi.Endpoint do
   defp loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp) do
     receive do
       {:pubsub_message, message} ->
-        conn = write_chunk(conn, message)
+        conn = write_data_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
-        loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+        conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+
+      # Consume useless messages to avoid memory overflow
+      _ ->
+        conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
     after
       1000 ->
         now_ms = :os.system_time(:millisecond)
@@ -211,39 +213,39 @@ defmodule Neurow.PublicApi.Endpoint do
           # SSE Timeout
           now_ms - last_message > sse_timeout ->
             Logger.debug("Client disconnected due to inactivity")
-            chunk(conn, "event: timeout\n\n")
-            :timeout
+            conn |> write_raw_chunk("event: timeout")
 
           # SSE Keep alive, send a ping
           now_ms - last_ping > keep_alive ->
-            chunk(conn, "event: ping\n\n")
-            loop(conn, sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
+            conn
+            |> write_raw_chunk("event: ping")
+            |> loop(sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
 
           # JWT token expired
           jwt_exp * 1000 < now_ms ->
-            chunk(conn, "event: credentials_expired\n\n")
-            :close
+            conn |> write_raw_chunk("event: credentials_expired")
 
           # We need to stop
           StopListener.close_connections?() ->
-            chunk(conn, "event: reconnect\n\n")
-            :close
+            conn |> write_raw_chunk("event: reconnect")
 
           # Nothing
           true ->
-            loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
+            conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
         end
     end
   end
 
-  defp write_chunk(conn, message) do
-    {:ok, conn} =
-      chunk(
-        conn,
-        "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}\n\n"
-      )
-
+  defp write_raw_chunk(conn, raw_message) do
+    {:ok, conn} = chunk(conn, "#{raw_message}\n\n")
     conn
+  end
+
+  defp write_data_chunk(conn, message) do
+    conn
+    |> write_raw_chunk(
+      "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}"
+    )
   end
 
   defp preflight_request_max_age(),

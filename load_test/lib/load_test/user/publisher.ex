@@ -38,7 +38,7 @@ defmodule LoadTest.User.Publisher do
       start_time: start_time
     }
 
-    Logger.info(fn ->
+    Logger.debug(fn ->
       "publisher_#{state.user_name}: Start publishing #{length(messages)} messages to #{state.publish_url}, topic #{topic}"
     end)
 
