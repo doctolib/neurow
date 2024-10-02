@@ -185,7 +185,7 @@ defmodule Neurow.PublicApi.Endpoint do
     {_, message} = first
 
     if message.timestamp > last_event_id do
-      conn = write_data_chunk(conn, message)
+      conn = write_chunk(conn, message)
       process_history(conn, last_event_id, sent + 1, rest)
     else
       process_history(conn, last_event_id, sent, rest)
@@ -205,11 +205,11 @@ defmodule Neurow.PublicApi.Endpoint do
 
     # The erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
     # so a small tolerance is addded, also a minimum of 100ms is set to avoid busy waiting
-    next_tick_ms = max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms] + 20), 100)
+    next_tick_ms = max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms]) + 20, 100)
 
     receive do
       {:pubsub_message, message} ->
-        conn = write_data_chunk(conn, message)
+        conn = write_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message_ts = :os.system_time(:millisecond)
 
