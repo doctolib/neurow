@@ -37,13 +37,13 @@ defmodule Neurow.PublicApi.Endpoint do
       %{"iss" => issuer, "sub" => sub, "exp" => exp} ->
         topic = "#{issuer}-#{sub}"
 
-        timeout =
+        timeout_ms =
           case conn.req_headers |> List.keyfind("x-sse-timeout", 0) do
             nil -> Neurow.Configuration.sse_timeout()
             {"x-sse-timeout", timeout} -> String.to_integer(timeout)
           end
 
-        keep_alive =
+        keep_alive_ms =
           case conn.req_headers |> List.keyfind("x-sse-keepalive", 0) do
             nil -> Neurow.Configuration.sse_keepalive()
             {"x-sse-keepalive", keepalive} -> String.to_integer(keepalive)
@@ -56,8 +56,8 @@ defmodule Neurow.PublicApi.Endpoint do
           |> put_resp_header("cache-control", "no-cache")
           |> put_resp_header("connection", "close")
           |> put_resp_header("x-sse-server", to_string(node()))
-          |> put_resp_header("x-sse-timeout", to_string(timeout))
-          |> put_resp_header("x-sse-keepalive", to_string(keep_alive))
+          |> put_resp_header("x-sse-timeout", to_string(timeout_ms))
+          |> put_resp_header("x-sse-keepalive", to_string(keep_alive_ms))
 
         :ok = Neurow.StopListener.subscribe()
         :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
@@ -76,12 +76,12 @@ defmodule Neurow.PublicApi.Endpoint do
           _ ->
             Logger.debug("Client subscribed to #{topic}")
 
-            last_message = :os.system_time(:millisecond)
+            now_ms = :os.system_time(:millisecond)
 
             conn
             |> send_chunked(200)
             |> import_history(topic, last_event_id)
-            |> loop(timeout, keep_alive, last_message, last_message, exp)
+            |> loop(timeout_ms, keep_alive_ms, now_ms, now_ms, exp)
         end
 
       _ ->
@@ -196,49 +196,61 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  defp loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp) do
+  defp loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp) do
+    now_ms = :os.system_time(:millisecond)
+
+    next_ping_ms = last_ping_ts + keep_alive_ms - now_ms
+    timeout_ms = last_message_ts + sse_timeout_ms - now_ms
+    jwt_exp_ms = jwt_exp * 1000 - now_ms
+
+    # The erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
+    # so a small tolerance is addded, also a minimum of 100ms is set to avoid busy waiting
+    next_tick_ms = max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms] + 20), 100)
+
     receive do
       {:pubsub_message, message} ->
         conn = write_chunk(conn, message)
         Stats.inc_msg_published()
-        new_last_message = :os.system_time(:millisecond)
-        conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+        new_last_message_ts = :os.system_time(:millisecond)
+
+        conn
+        |> loop(sse_timeout_ms, keep_alive_ms, new_last_message_ts, new_last_message_ts, jwt_exp)
 
       {:shutdown, _value} ->
-        Logger.debug("Client on disconnected due to node_shutdown")
+        Logger.debug("Client on disconnected due to node shutdown")
         conn |> write_chunk("event: node_shutdown")
 
       _ ->
-        conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
+        conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
     after
-      1000 ->
-        now_ms = :os.system_time(:millisecond)
+      next_tick_ms ->
+        now_after_wait_ms = :os.system_time(:millisecond)
 
         cond do
           # SSE Timeout
-          now_ms - last_message > sse_timeout ->
+          now_after_wait_ms - last_message_ts > sse_timeout_ms ->
             Logger.info("Client disconnected due to inactivity")
             conn |> write_chunk("event: timeout")
 
           # SSE Keep alive, send a ping
-          now_ms - last_ping > keep_alive ->
+          now_after_wait_ms - last_ping_ts > keep_alive_ms ->
             conn
             |> write_chunk("event: ping")
             |> loop(
-              sse_timeout,
-              keep_alive,
-              last_message,
-              now_ms,
+              sse_timeout_ms,
+              keep_alive_ms,
+              last_message_ts,
+              now_after_wait_ms,
               jwt_exp
             )
 
           # JWT token expired
-          jwt_exp * 1000 < now_ms ->
+          jwt_exp * 1000 < now_after_wait_ms ->
             conn |> write_chunk("event: credentials_expired")
 
           # Nothing
           true ->
-            conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
+            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
         end
     end
   end
