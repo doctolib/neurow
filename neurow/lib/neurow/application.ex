@@ -74,8 +74,8 @@ defmodule Neurow.Application do
          scheme: :http, plug: Neurow.InternalApi.Endpoint, options: [port: internal_api_port]},
         {Plug.Cowboy,
          scheme: sse_http_scheme, plug: Neurow.PublicApi.Endpoint, options: public_api_http_config},
-        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.Endpoint], shutdown: 20_000},
-        {StopListener, []},
+        {Plug.Cowboy.Drainer, refs: [Neurow.PublicApi.Endpoint.HTTP], shutdown: 20_000},
+        {Neurow.StopListener, []},
         {Neurow.Broker.ReceiverShardManager, [history_min_duration]}
       ] ++
         Neurow.Broker.ReceiverShardManager.create_receivers() ++
@@ -92,6 +92,12 @@ defmodule Neurow.Application do
     opts = [strategy: :one_for_one, name: Neurow.Supervisor]
 
     Supervisor.start_link(children, opts)
+  end
+
+  @impl true
+  def prep_stop(state) do
+    Neurow.StopListener.shutdown()
+    state
   end
 
   defp cluster_topologies_from_env_variables do

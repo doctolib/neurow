@@ -1,4 +1,4 @@
-defmodule StopListener do
+defmodule Neurow.StopListener do
   use GenServer
   require Logger
 
@@ -6,25 +6,37 @@ defmodule StopListener do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
-  def init(_) do
-    :ets.new(__MODULE__, [:set, :named_table, read_concurrency: true])
-    Process.flag(:trap_exit, true)
-    {:ok, %{shutdown_in_progress: false}}
-  end
-
-  def close_connections?() do
-    try do
-      :ets.lookup(__MODULE__, :close_connections?)
-      false
-    rescue
-      ArgumentError -> true
+  def subscribe(value \\ nil) do
+    case Registry.register(Registry.StopListener, :shutdown_subscribers, value) do
+      {:ok, _pid} -> :ok
+      {:error, cause} -> {:error, cause}
     end
   end
 
-  @impl GenServer
-  def terminate(_reason, _state) do
-    Logger.info("Graceful Shutdown occurring")
-    :ok
+  def shutdown() do
+    GenServer.cast(__MODULE__, :shutdown)
+  end
+
+  @impl true
+  def init(_opts) do
+    Logger.info("Starting stop listener")
+    Process.flag(:trap_exit, true)
+    Registry.start_link(keys: :duplicate, name: Registry.StopListener)
+    {:ok, %{}}
+  end
+
+  @impl true
+  def handle_cast(:shutdown, state) do
+    Logger.info("Graceful Shutdown occurring ...")
+
+    Registry.dispatch(Registry.StopListener, :shutdown_subscribers, fn entries ->
+      Logger.info("Shutting down #{length(entries)} connections")
+
+      for {pid, value} <- entries do
+        send(pid, {:shutdown, value})
+      end
+    end)
+
+    {:stop, :normal, state}
   end
 end

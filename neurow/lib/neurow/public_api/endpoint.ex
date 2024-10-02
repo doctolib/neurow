@@ -59,6 +59,7 @@ defmodule Neurow.PublicApi.Endpoint do
           |> put_resp_header("x-sse-timeout", to_string(timeout))
           |> put_resp_header("x-sse-keepalive", to_string(keep_alive))
 
+        :ok = Neurow.StopListener.subscribe()
         :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
 
         last_event_id = extract_last_event_id(conn)
@@ -73,15 +74,14 @@ defmodule Neurow.PublicApi.Endpoint do
             )
 
           _ ->
-            conn = send_chunked(conn, 200)
-            conn = import_history(conn, topic, last_event_id)
-
             Logger.debug("Client subscribed to #{topic}")
 
             last_message = :os.system_time(:millisecond)
-            conn |> loop(timeout, keep_alive, last_message, last_message, exp)
-            Logger.debug("Client disconnected from #{topic}")
+
             conn
+            |> send_chunked(200)
+            |> import_history(topic, last_event_id)
+            |> loop(timeout, keep_alive, last_message, last_message, exp)
         end
 
       _ ->
@@ -202,7 +202,11 @@ defmodule Neurow.PublicApi.Endpoint do
         conn = write_chunk(conn, message)
         Stats.inc_msg_published()
         new_last_message = :os.system_time(:millisecond)
-        loop(conn, sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+        conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
+
+      {:shutdown, _value} ->
+        Logger.info("Client disconnected due to shutdown")
+        conn |> write_chunk("event: shutdown")
     after
       1000 ->
         now_ms = :os.system_time(:millisecond)
@@ -210,39 +214,44 @@ defmodule Neurow.PublicApi.Endpoint do
         cond do
           # SSE Timeout
           now_ms - last_message > sse_timeout ->
-            Logger.debug("Client disconnected due to inactivity")
-            chunk(conn, "event: timeout\n\n")
-            :timeout
+            Logger.info("Client disconnected due to inactivity")
+            conn |> write_chunk("event: timeout")
 
           # SSE Keep alive, send a ping
           now_ms - last_ping > keep_alive ->
-            chunk(conn, "event: ping\n\n")
-            loop(conn, sse_timeout, keep_alive, last_message, now_ms, jwt_exp)
+            conn
+            |> write_chunk("event: ping")
+            |> loop(
+              sse_timeout,
+              keep_alive,
+              last_message,
+              now_ms,
+              jwt_exp
+            )
 
           # JWT token expired
           jwt_exp * 1000 < now_ms ->
-            chunk(conn, "event: credentials_expired\n\n")
-            :close
-
-          # We need to stop
-          StopListener.close_connections?() ->
-            chunk(conn, "event: reconnect\n\n")
-            :close
+            conn |> write_chunk("event: credentials_expired")
 
           # Nothing
           true ->
-            loop(conn, sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
+            conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
         end
     end
   end
 
-  defp write_chunk(conn, message) do
+  defp write_chunk(conn, message) when is_struct(message, Neurow.Broker.Message) do
     {:ok, conn} =
       chunk(
         conn,
         "id: #{message.timestamp}\nevent: #{message.event}\ndata: #{message.payload}\n\n"
       )
 
+    conn
+  end
+
+  defp write_chunk(conn, message) when is_binary(message) do
+    {:ok, conn} = chunk(conn, "#{message}\n\n")
     conn
   end
 
