@@ -205,8 +205,11 @@ defmodule Neurow.PublicApi.Endpoint do
         conn |> loop(sse_timeout, keep_alive, new_last_message, new_last_message, jwt_exp)
 
       {:shutdown, _value} ->
-        Logger.info("Client disconnected due to shutdown")
-        conn |> write_chunk("event: shutdown")
+        Logger.debug("Client on disconnected due to node_shutdown")
+        conn |> write_chunk("event: node_shutdown")
+
+      _ ->
+        conn |> loop(sse_timeout, keep_alive, last_message, last_ping, jwt_exp)
     after
       1000 ->
         now_ms = :os.system_time(:millisecond)

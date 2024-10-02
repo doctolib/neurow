@@ -37,6 +37,6 @@ defmodule Neurow.StopListener do
       end
     end)
 
-    {:stop, :normal, state}
+    {:noreply, state}
   end
 end
