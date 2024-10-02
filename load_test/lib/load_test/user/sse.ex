@@ -151,6 +151,7 @@ defmodule SseUser do
         Logger.error(
           "#{header(state)} Received unexpected message on url #{state.url}: #{inspect(received_message)} instead of #{expected_message}"
         )
+
         :error
       end
     rescue
