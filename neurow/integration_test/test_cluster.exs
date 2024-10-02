@@ -39,6 +39,14 @@ defmodule Neurow.IntegrationTest.TestCluster do
     GenServer.call(__MODULE__, :cluster_state)
   end
 
+  def start_new_node() do
+    GenServer.call(__MODULE__, :start_new_node)
+  end
+
+  def shutdown_node(node_name) do
+    GenServer.call(__MODULE__, {:shutdown_node, node_name})
+  end
+
   @doc """
   Flush the message history of all nodes in the cluster.
   A call to this method is expected in the setup block of integration tests
@@ -59,7 +67,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
        public_api_port_start: options[:public_api_port_start] || 4010,
        history_min_duration: options[:history_min_duration] || 3,
        sse_timeout: options[:internal_api_port_start] || 3000,
-       # List of [{node, public_api_port, internal_api_port}]
+       # List of [{node_name, public_api_port, internal_api_port}]
        nodes: []
      }}
   end
@@ -117,11 +125,35 @@ defmodule Neurow.IntegrationTest.TestCluster do
   end
 
   @impl true
+  def handle_call(:start_new_node, _from, state) do
+    new_node_infos = start_node(length(state.nodes) + 1, state)
+
+    {:reply, new_node_infos,
+     %{state | nodes: [new_node_infos | state.nodes], node_amount: state.node_amount + 1}}
+  end
+
+  def handle_call({:shutdown_node, node_name}, _from, state) do
+    Logger.info("Stopping node #{node_name}")
+
+    # Trigger a graceful shutdown of the node
+    :rpc.call(node_name, :init, :stop, [])
+
+    {:reply, :shutdown,
+     %{
+       state
+       | nodes:
+           Enum.reject(state.nodes, fn {node, _public_api_port, _internal_api_port} ->
+             node == node_name
+           end)
+     }}
+  end
+
+  @impl true
   def terminate(_reason, state) do
     state.nodes
-    |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
-      Logger.info("Stopping node #{node}")
-      :peer.stop(node)
+    |> Enum.map(fn {node_name, _public_api_port, _internal_api_port} ->
+      Logger.info("Stopping node #{node_name}")
+      :peer.stop(node_name)
     end)
   end
 

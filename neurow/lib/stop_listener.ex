@@ -19,15 +19,13 @@ defmodule Neurow.StopListener do
 
   @impl true
   def init(_opts) do
-    Logger.info("Starting stop listener")
-    Process.flag(:trap_exit, true)
     Registry.start_link(keys: :duplicate, name: Registry.StopListener)
     {:ok, %{}}
   end
 
   @impl true
   def handle_cast(:shutdown, state) do
-    Logger.info("Graceful Shutdown occurring ...")
+    Logger.info("Graceful shutdown occurring ...")
 
     Registry.dispatch(Registry.StopListener, :shutdown_subscribers, fn entries ->
       Logger.info("Shutting down #{length(entries)} connections")

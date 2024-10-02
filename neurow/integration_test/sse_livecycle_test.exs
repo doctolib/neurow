@@ -107,4 +107,37 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
       )
     end
   end
+
+  describe "node shutdown" do
+    setup do
+      {node_name, public_api_port, _internal_api_port} = TestCluster.start_new_node()
+
+      on_exit(fn ->
+        TestCluster.shutdown_node(node_name)
+      end)
+
+      {:ok, node_name: node_name, public_api_port: public_api_port}
+    end
+
+    test "the client receives a 'shutdown' event when the node it is connected to is shutdowned",
+         %{
+           node_name: node_name,
+           public_api_port: public_api_port
+         } do
+      Task.async(fn ->
+        subscribe(public_api_port, "test_topic", fn ->
+          assert_receive %HTTPoison.AsyncStatus{code: 200}
+          assert_receive %HTTPoison.AsyncHeaders{}
+
+          assert_receive %HTTPoison.AsyncChunk{chunk: shutdown_sse_event}, 5_000
+
+          assert "shutdown" == parse_sse_event(shutdown_sse_event).event
+
+          assert_receive %HTTPoison.AsyncEnd{}
+        end)
+      end)
+
+      TestCluster.shutdown_node(node_name)
+    end
+  end
 end
