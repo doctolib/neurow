@@ -335,13 +335,14 @@ defmodule Neurow.PublicApi.EndpointTest do
 
   describe "SSE lifecycle" do
     test "the client is disconnected after inactivity" do
+      override_timeout(500)
+
       conn =
         conn(:get, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
         )
-        |> put_req_header("x-sse-timeout", "500")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
@@ -350,13 +351,14 @@ defmodule Neurow.PublicApi.EndpointTest do
     end
 
     test "a ping event is sent every 'keep_alive' interval" do
+      override_keepalive(500)
+
       conn =
         conn(:get, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
         )
-        |> put_req_header("x-sse-keepalive", "500")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_chunked, 200}
@@ -494,6 +496,18 @@ defmodule Neurow.PublicApi.EndpointTest do
                }
       end)
     end
+  end
+
+  defp override_timeout(timeout) do
+    default_timeout = Application.fetch_env!(:neurow, :sse_timeout)
+    Application.put_env(:neurow, :sse_timeout, timeout)
+    on_exit(fn -> Application.put_env(:neurow, :sse_timeout, default_timeout) end)
+  end
+
+  defp override_keepalive(keepalive) do
+    default_keepalive = Application.fetch_env!(:neurow, :sse_keepalive)
+    Application.put_env(:neurow, :sse_keepalive, keepalive)
+    on_exit(fn -> Application.put_env(:neurow, :sse_keepalive, default_keepalive) end)
   end
 
   defp publish_message(topic, id, message) do

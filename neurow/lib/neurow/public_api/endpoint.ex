@@ -37,17 +37,8 @@ defmodule Neurow.PublicApi.Endpoint do
       %{"iss" => issuer, "sub" => sub, "exp" => exp} ->
         topic = "#{issuer}-#{sub}"
 
-        timeout_ms =
-          case conn.req_headers |> List.keyfind("x-sse-timeout", 0) do
-            nil -> Neurow.Configuration.sse_timeout()
-            {"x-sse-timeout", timeout} -> String.to_integer(timeout)
-          end
-
-        keep_alive_ms =
-          case conn.req_headers |> List.keyfind("x-sse-keepalive", 0) do
-            nil -> Neurow.Configuration.sse_keepalive()
-            {"x-sse-keepalive", keepalive} -> String.to_integer(keepalive)
-          end
+        timeout_ms = Neurow.Configuration.sse_timeout()
+        keep_alive_ms = Neurow.Configuration.sse_keepalive()
 
         conn =
           conn
@@ -247,9 +238,9 @@ defmodule Neurow.PublicApi.Endpoint do
               jwt_exp
             )
 
-          {:shutdown, _value} ->
-            Logger.debug("Client on disconnected due to node shutdown")
-            conn |> write_chunk("event: node_shutdown")
+          :shutdown ->
+            Logger.debug("Client disconnected due to node shutdown")
+            conn |> write_chunk("event: reconnect")
 
           # Consume useless messages to avoid memory overflow
           _ ->

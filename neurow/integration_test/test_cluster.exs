@@ -47,6 +47,14 @@ defmodule Neurow.IntegrationTest.TestCluster do
     GenServer.call(__MODULE__, {:shutdown_node, node_name})
   end
 
+  def update_sse_timeout(timeout) do
+    GenServer.call(__MODULE__, {:update_timeout, timeout})
+  end
+
+  def update_sse_keepalive(keepalive) do
+    GenServer.call(__MODULE__, {:update_keepalive, keepalive})
+  end
+
   @doc """
   Flush the message history of all nodes in the cluster.
   A call to this method is expected in the setup block of integration tests
@@ -132,6 +140,7 @@ defmodule Neurow.IntegrationTest.TestCluster do
      %{state | nodes: [new_node_infos | state.nodes], node_amount: state.node_amount + 1}}
   end
 
+  @impl true
   def handle_call({:shutdown_node, node_name}, _from, state) do
     Logger.info("Stopping node #{node_name}")
 
@@ -146,6 +155,26 @@ defmodule Neurow.IntegrationTest.TestCluster do
              node == node_name
            end)
      }}
+  end
+
+  @impl true
+  def handle_call({:update_timeout, timeout}, _from, state) do
+    state.nodes
+    |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
+      :rpc.call(node, Application, :put_env, [:neurow, :sse_timeout, timeout])
+    end)
+
+    {:reply, :updated, state}
+  end
+
+  @impl true
+  def handle_call({:update_keepalive, keepalive}, _from, state) do
+    state.nodes
+    |> Enum.map(fn {node, _public_api_port, _internal_api_port} ->
+      :rpc.call(node, Application, :put_env, [:neurow, :sse_keepalive, keepalive])
+    end)
+
+    {:reply, :updated, state}
   end
 
   @impl true

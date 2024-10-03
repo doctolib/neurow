@@ -38,41 +38,6 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
         assert_receive %HTTPoison.AsyncEnd{}
       end)
     end
-
-    test "the SSE connection is timed-out by the server based on x-sse-timeout HTTP header",
-         %{
-           cluster_state: %{
-             public_api_ports: [first_public_port | _other_ports]
-           }
-         } do
-      subscribe(
-        first_public_port,
-        "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
-
-          assert_headers(
-            headers,
-            [
-              {"access-control-allow-origin", "*"},
-              {"cache-control", "no-cache"},
-              {"connection", "close"},
-              {"content-type", "text/event-stream"},
-              {"transfer-encoding", "chunked"},
-              {"x-sse-timeout", "1500"}
-            ]
-          )
-
-          assert_receive %HTTPoison.AsyncChunk{chunk: timeout_sse_event}, 3_000
-
-          assert "timeout" == parse_sse_event(timeout_sse_event).event
-
-          assert_receive %HTTPoison.AsyncEnd{}
-        end,
-        "x-sse-timeout": "1500"
-      )
-    end
   end
 
   describe "keepalive" do
@@ -81,6 +46,8 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
+      override_keepalive(100)
+
       subscribe(
         first_public_port,
         "test_topic",
@@ -102,8 +69,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
 
           assert_receive %HTTPoison.AsyncChunk{chunk: ping_sse_event}, 1_500
           assert "ping" == parse_sse_event(ping_sse_event).event
-        end,
-        "x-sse-keepalive": "100"
+        end
       )
     end
   end
@@ -131,7 +97,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
 
           assert_receive %HTTPoison.AsyncChunk{chunk: shutdown_sse_event}, 5_000
 
-          assert "shutdown" == parse_sse_event(shutdown_sse_event).event
+          assert "reconnect" == parse_sse_event(shutdown_sse_event).event
 
           assert_receive %HTTPoison.AsyncEnd{}
         end)
@@ -139,5 +105,23 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
 
       TestCluster.shutdown_node(node_name)
     end
+  end
+
+  def override_timeout(timeout) do
+    default_timeout = Application.fetch_env(:neurow, :sse_timeout)
+    TestCluster.update_sse_timeout(timeout)
+
+    on_exit(fn ->
+      TestCluster.update_sse_timeout(default_timeout)
+    end)
+  end
+
+  def override_keepalive(keepalive) do
+    default_keepalive = Application.fetch_env(:neurow, :sse_keepalive)
+    TestCluster.update_sse_keepalive(keepalive)
+
+    on_exit(fn ->
+      TestCluster.update_sse_keepalive(default_keepalive)
+    end)
   end
 end
