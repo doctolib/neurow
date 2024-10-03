@@ -85,7 +85,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
       {:ok, node_name: node_name, public_api_port: public_api_port}
     end
 
-    test "the client receives a 'shutdown' event when the node it is connected to is shutdowned",
+    test "the client receives a 'reconnect' event when the node it is connected to is shutdowned",
          %{
            node_name: node_name,
            public_api_port: public_api_port
