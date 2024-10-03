@@ -46,7 +46,7 @@ defmodule SseUser do
     end)
 
     headers = build_headers(context, topic)
-    http_request_opts = []
+    http_request_opts = [{:ssl, [{:verify, :verify_none}]} ]
 
     {:ok, request_id} =
       :httpc.request(:get, {url, headers}, http_request_opts, [{:sync, false}, {:stream, :self}])
