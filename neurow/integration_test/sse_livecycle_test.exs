@@ -108,7 +108,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
   end
 
   def override_timeout(timeout) do
-    default_timeout = Application.fetch_env(:neurow, :sse_timeout)
+    {:ok, default_timeout} = Application.fetch_env(:neurow, :sse_timeout)
     TestCluster.update_sse_timeout(timeout)
 
     on_exit(fn ->
@@ -117,7 +117,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
   end
 
   def override_keepalive(keepalive) do
-    default_keepalive = Application.fetch_env(:neurow, :sse_keepalive)
+    {:ok, default_keepalive} = Application.fetch_env(:neurow, :sse_keepalive)
     TestCluster.update_sse_keepalive(keepalive)
 
     on_exit(fn ->

@@ -6,15 +6,15 @@ defmodule Neurow.StopListener do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def subscribe(value \\ nil) do
-    case Registry.register(Registry.StopListener, :shutdown_subscribers, value) do
+  def subscribe() do
+    case Registry.register(Registry.StopListener, :shutdown_subscribers, nil) do
       {:ok, _pid} -> :ok
       {:error, cause} -> {:error, cause}
     end
   end
 
   def shutdown() do
-    GenServer.cast(__MODULE__, :shutdown)
+    GenServer.call(__MODULE__, :shutdown)
   end
 
   @impl true
@@ -24,14 +24,14 @@ defmodule Neurow.StopListener do
   end
 
   @impl true
-  def handle_cast(:shutdown, state) do
+  def handle_call(:shutdown, _from, state) do
     Logger.info("Graceful shutdown occurring ...")
 
     Registry.dispatch(Registry.StopListener, :shutdown_subscribers, fn entries ->
       Logger.info("Shutting down #{length(entries)} connections")
 
-      for {pid, value} <- entries do
-        send(pid, {:shutdown, value})
+      for {pid, _value} <- entries do
+        send(pid, :shutdown)
       end
     end)
 

@@ -187,7 +187,7 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp) do
+  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp_s) do
     now_ms = :os.system_time(:millisecond)
 
     cond do
@@ -205,11 +205,11 @@ defmodule Neurow.PublicApi.Endpoint do
           keep_alive_ms,
           last_message_ts,
           now_ms,
-          jwt_exp
+          jwt_exp_s
         )
 
       # JWT token expired
-      jwt_exp * 1000 < now_ms ->
+      jwt_exp_s * 1000 < now_ms ->
         conn |> write_chunk("event: credentials_expired")
 
       # Otherwise, let's wait for a message or the next tick
@@ -217,7 +217,7 @@ defmodule Neurow.PublicApi.Endpoint do
         # Compute the waiting time before the next tick
         next_ping_ms = last_ping_ts + keep_alive_ms - now_ms
         timeout_ms = last_message_ts + sse_timeout_ms - now_ms
-        jwt_exp_ms = jwt_exp * 1000 - now_ms
+        jwt_exp_ms = jwt_exp_s * 1000 - now_ms
 
         # The Erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
         # So a small tolerance is added, also a minimum of 100ms is set to avoid busy waiting
@@ -235,7 +235,7 @@ defmodule Neurow.PublicApi.Endpoint do
               keep_alive_ms,
               new_last_message_ts,
               new_last_message_ts,
-              jwt_exp
+              jwt_exp_s
             )
 
           :shutdown ->
@@ -244,10 +244,10 @@ defmodule Neurow.PublicApi.Endpoint do
 
           # Consume useless messages to avoid memory overflow
           _ ->
-            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
+            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp_s)
         after
           next_tick_ms ->
-            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp)
+            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp_s)
         end
     end
   end
