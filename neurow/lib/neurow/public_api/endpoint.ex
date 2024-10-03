@@ -187,54 +187,55 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp_s) do
+  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s) do
     now_ms = :os.system_time(:millisecond)
 
     cond do
-      # SSE Timeout
-      now_ms - last_message_ts > sse_timeout_ms ->
+      # SSE timeout, send a timout event and stop the connection
+      sse_timed_out?(now_ms, last_message_ms, sse_timeout_ms) ->
         Logger.info("Client disconnected due to inactivity")
         conn |> write_chunk("event: timeout")
 
       # SSE Keep alive, send a ping
-      now_ms - last_ping_ts > keep_alive_ms ->
+      sse_needs_keepalive?(now_ms, last_ping_ms, keep_alive_ms) ->
         conn
         |> write_chunk("event: ping")
         |> loop(
           sse_timeout_ms,
           keep_alive_ms,
-          last_message_ts,
+          last_message_ms,
           now_ms,
           jwt_exp_s
         )
 
-      # JWT token expired
-      jwt_exp_s * 1000 < now_ms ->
+      # JWT token expired, send a credentials_expired event and stop the connection
+      jwt_expired?(now_ms, jwt_exp_s) ->
         conn |> write_chunk("event: credentials_expired")
 
       # Otherwise, let's wait for a message or the next tick
       true ->
-        # Compute the waiting time before the next tick
-        next_ping_ms = last_ping_ts + keep_alive_ms - now_ms
-        timeout_ms = last_message_ts + sse_timeout_ms - now_ms
-        jwt_exp_ms = jwt_exp_s * 1000 - now_ms
-
-        # The Erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
-        # So a small tolerance is added, also a minimum of 100ms is set to avoid busy waiting
-        next_tick_ms = max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms]) + 20, 100)
+        next_tick_ms =
+          next_tick_ms(
+            now_ms,
+            last_message_ms,
+            last_ping_ms,
+            keep_alive_ms,
+            sse_timeout_ms,
+            jwt_exp_s
+          )
 
         receive do
           {:pubsub_message, message} ->
             conn = write_chunk(conn, message)
             Stats.inc_msg_published()
-            new_last_message_ts = :os.system_time(:millisecond)
+            new_last_message_ms = :os.system_time(:millisecond)
 
             conn
             |> loop(
               sse_timeout_ms,
               keep_alive_ms,
-              new_last_message_ts,
-              new_last_message_ts,
+              new_last_message_ms,
+              new_last_message_ms,
               jwt_exp_s
             )
 
@@ -244,12 +245,38 @@ defmodule Neurow.PublicApi.Endpoint do
 
           # Consume useless messages to avoid memory overflow
           _ ->
-            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp_s)
+            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s)
         after
           next_tick_ms ->
-            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ts, last_ping_ts, jwt_exp_s)
+            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s)
         end
     end
+  end
+
+  defp sse_timed_out?(now_ms, last_message_ms, sse_timeout_ms),
+    do: now_ms - last_message_ms > sse_timeout_ms
+
+  defp sse_needs_keepalive?(now_ms, last_ping_ms, keep_alive_ms),
+    do: now_ms - last_ping_ms > keep_alive_ms
+
+  defp jwt_expired?(now_ms, jwt_exp_s),
+    do: jwt_exp_s * 1000 < now_ms
+
+  defp next_tick_ms(
+         now_ms,
+         last_message_ms,
+         last_ping_ms,
+         keep_alive_ms,
+         sse_timeout_ms,
+         jwt_exp_s
+       ) do
+    next_ping_ms = last_ping_ms + keep_alive_ms - now_ms
+    timeout_ms = last_message_ms + sse_timeout_ms - now_ms
+    jwt_exp_ms = jwt_exp_s * 1000 - now_ms
+
+    # The Erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
+    # So a small tolerance is added, also a minimum of 100ms is set to avoid busy waiting
+    max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms]) + 20, 100)
   end
 
   defp write_chunk(conn, message) when is_struct(message, Neurow.Broker.Message) do
