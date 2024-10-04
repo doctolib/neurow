@@ -35,7 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          cd neurow && docker build . -t neurow:latest
+          cd neurow 
+          docker build . -t neurow:latest
           docker run -d -p 4000:4000 --name neurow_test neurow:latest
           curl --retry 5 --retry-connrefused --retry-max-time 30 --retry-delay 6 http://localhost:4000/ping 
           docker stop neurow_test
