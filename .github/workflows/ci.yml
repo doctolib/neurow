@@ -39,6 +39,8 @@ jobs:
           docker build . -t neurow:latest
           docker run -d --name neurow_test neurow:latest
           sleep 10
+          docker ps -a
+          docker logs neurow_test
           docker exec neurow_test curl -v --retry 5 --retry-connrefused --retry-max-time 30 --retry-delay 6 http://localhost:3000/ping 
           docker stop neurow_test
           docker rm neurow_test
