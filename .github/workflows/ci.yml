@@ -34,4 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cd neurow && docker build .
+      - run: |
+          cd neurow && docker build . -t neurow:latest
+          docker run -d --name neurow_test neurow:latest
+          sleep 5
+          docker stop neurow_test
+          docker rm neurow_test
