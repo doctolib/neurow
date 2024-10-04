@@ -36,8 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           cd neurow 
-          docker build . -t neurow:latest
-          docker run -e JWT_CONFIG="{\"local_name\":\"neurow\",\"service_name\":\"neurow\",\"algorithm\":\"HS256\",\"clients\":{\"test\":\"secret\"}}" -d --name neurow_test neurow:latest
-          docker exec neurow_test curl -v --retry 5 --retry-connrefused --retry-max-time 30 --retry-delay 6 http://localhost:3000/ping 
-          docker stop neurow_test
-          docker rm neurow_test
+          docker build . -t neurow:${{ github.sha }}
+          docker run -e JWT_CONFIG="{\"local_name\":\"neurow\",\"service_name\":\"neurow\",\"algorithm\":\"HS256\",\"clients\":{\"test\":\"secret\"}}" -d --name neurow_${{ github.sha }}_test neurow:${{ github.sha }}
+          docker exec neurow_${{ github.sha }}_test curl -v --retry 5 --retry-connrefused --retry-max-time 30 --retry-delay 6 http://localhost:3000/ping 
+          docker stop neurow_${{ github.sha }}_test
+          docker rm neurow_${{ github.sha }}_test
