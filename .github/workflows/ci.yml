@@ -37,7 +37,7 @@ jobs:
       - run: |
           cd neurow 
           docker build . -t neurow:latest
-          docker run -d --name neurow_test neurow:latest
+          docker run -e JWT_CONFIG="{\"local_name\":\"neurow\",\"service_name\":\"neurow\",\"algorithm\":\"HS256\",\"clients\":{\"test\":\"secret\"}}" -d --name neurow_test neurow:latest
           sleep 10
           docker ps -a
           docker logs neurow_test
