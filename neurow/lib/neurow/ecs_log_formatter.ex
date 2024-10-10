@@ -4,16 +4,16 @@ defmodule Neurow.EcsLogFormatter do
 
   # ECS Reference: https://www.elastic.co/guide/en/ecs/current/index.html
 
-  def format(level, message, timestamp, metadata) do
-    {{year, month, day}, {hour, minute, second, millisecond}} = timestamp
-    {:ok, date} = Date.new(year, month, day)
-    {:ok, time} = Time.new(hour, minute, second, millisecond * 1000)
-    {:ok, datetime} = DateTime.new(date, time)
+  def format(level, message, _timestamp, metadata) do
+    # The timestamp provided in input parameter is in the system timezone,
+    # but there is no clean way to get the system timezone in Elixir/Erlang to convert it to UTC and/or format it in ISO8601.
+    # So we use the unix timestamp provided in the metadata to get the event datetime time in UTC
+    {:ok, event_datetime} = DateTime.from_unix(metadata[:time], :microsecond)
 
     {module, function, arity} = metadata[:mfa]
 
     %{
-      "@timestamp" => datetime |> DateTime.to_iso8601(),
+      "@timestamp" => event_datetime |> DateTime.to_iso8601(),
       "log.level" => level,
       "log.name" => "#{module}.#{function}/#{arity}",
       "log.source" => %{

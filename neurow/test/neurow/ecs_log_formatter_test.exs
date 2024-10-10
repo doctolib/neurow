@@ -2,20 +2,19 @@ defmodule Neurow.EcsLogFormatterTest do
   use ExUnit.Case
 
   test "generates ECS compliant logs with default metadata" do
-    timestamp = {{2024, 10, 23}, {12, 25, 45, 123}}
-
     metadata = %{
+      time: 1_728_556_213_722_376,
       mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
       file: "test/neurow/ecs_log_formatter_test.exs",
       line: 10
     }
 
     json_log =
-      Neurow.EcsLogFormatter.format(:info, "Hello, world!", timestamp, metadata)
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
       |> :jiffy.decode([:return_maps])
 
     assert json_log == %{
-             "@timestamp" => "2024-10-23T12:25:45.123000Z",
+             "@timestamp" => "2024-10-10T10:30:13.722376Z",
              "log.level" => "info",
              "log.name" => "Elixir.Neurow.EcsLogFormatterTest.fake_function/4",
              "log.source" => %{
@@ -35,9 +34,8 @@ defmodule Neurow.EcsLogFormatterTest do
   end
 
   test "supports optional trace_id metadata" do
-    timestamp = {{2024, 10, 23}, {12, 25, 45, 123}}
-
     metadata = %{
+      time: 1_728_556_213_722_376,
       mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
       file: "test/neurow/ecs_log_formatter_test.exs",
       line: 10,
@@ -45,11 +43,11 @@ defmodule Neurow.EcsLogFormatterTest do
     }
 
     json_log =
-      Neurow.EcsLogFormatter.format(:info, "Hello, world!", timestamp, metadata)
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
       |> :jiffy.decode([:return_maps])
 
     assert json_log == %{
-             "@timestamp" => "2024-10-23T12:25:45.123000Z",
+             "@timestamp" => "2024-10-10T10:30:13.722376Z",
              "log.level" => "info",
              "log.name" => "Elixir.Neurow.EcsLogFormatterTest.fake_function/4",
              "log.source" => %{
@@ -70,9 +68,8 @@ defmodule Neurow.EcsLogFormatterTest do
   end
 
   test "supports optional error_code metadata" do
-    timestamp = {{2024, 10, 23}, {12, 25, 45, 123}}
-
     metadata = %{
+      time: 1_728_556_213_722_376,
       mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
       file: "test/neurow/ecs_log_formatter_test.exs",
       line: 10,
@@ -80,11 +77,11 @@ defmodule Neurow.EcsLogFormatterTest do
     }
 
     json_log =
-      Neurow.EcsLogFormatter.format(:info, "Hello, world!", timestamp, metadata)
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
       |> :jiffy.decode([:return_maps])
 
     assert json_log == %{
-             "@timestamp" => "2024-10-23T12:25:45.123000Z",
+             "@timestamp" => "2024-10-10T10:30:13.722376Z",
              "log.level" => "info",
              "log.name" => "Elixir.Neurow.EcsLogFormatterTest.fake_function/4",
              "log.source" => %{
