@@ -165,9 +165,9 @@ defmodule Neurow.PublicApi.Endpoint do
 
     {conn, sent} = process_history(conn, last_event_id, 0, history)
 
-    Logger.debug(fn ->
+    Logger.debug(
       "Imported history for #{topic}, last_event_id: #{last_event_id}, imported size: #{sent}"
-    end)
+    )
 
     conn
   end

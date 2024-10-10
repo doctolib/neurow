@@ -18,9 +18,9 @@ All commands provided here must be run in the `/neurow` directory
 
 - Install the latest version of Elixir by following instructions provided [here](https://elixir-lang.org/install.html),
 - Run `mix deps.get` to download the dependencies required by Neurow,
-- Run `mix run --no-halt` to start Neurow locally with the default development configuration. The public API in available on `http://localhost:4000` and the internal API on `http://localhost:3000`.
+- Run `mix run --no-halt` to start Neurow locally with the default development configuration. The public API is then available on `http://localhost:4000` and the internal API on `http://localhost:3000`.
 
-It is possible to override the default local configuration with environment variables. For example to run Neurow on custom ports: `PUBLIC_API_PORT=5000 INTERNAL_API_PORT=5000  mix run --no-halt `
+It is possible to override the default local configuration with environment variables. For example to run Neurow on custom ports: `PUBLIC_API_PORT=5000 INTERNAL_API_PORT=5000 mix run --no-halt `
 
 
 Available environment variables are:
@@ -28,6 +28,7 @@ Available environment variables are:
 | Name | Default value | Role |
 | --- | --- | --- | 
 | `LOG_LEVEL` | info | Log level |
+| `LOG_FORMAT` | TEXT | Log format, possible values: `TEXT` - space separated attributes, `ECS` - JSON format compatible with the [Elastic Common Schema](https://www.elastic.co/guide/en/ecs/current/index.html) | 
 | `PUBLIC_API_PORT` | 4000 | TCP port of the public API |
 | `PUBLIC_API_JWT_MAX_LIFETIME` | 120 | Max lifetime in seconds allowed for JWT tokens issued on the public API |
 | `PUBLIC_API_CONTEXT_PATH` | "" | URL prefix for resources of the public API - Useful to mount Neurow on a existing website|
@@ -40,8 +41,7 @@ Available environment variables are:
 
 
 ### Generate JWT tokens for the local environment
-
-Both the public and internal APIs rely on JWT tokens for authentication. For now JWT tokens are signed tokens with shared secret keys. (The support of assymetric signatures will be supported later.)
+Both the public and internal APIs rely on JWT tokens for authentication. For now JWT tokens are signed tokens with shared secret keys. Assymetric signatures will be supported later.
 
 Developement issuers and their signature keys are hard coded in `config/runtimes.exs:51`. The available issuers are `test_issuer1` and `test_issuer2`. 
 
@@ -53,7 +53,6 @@ To generate a JWT token for the internal API, run:
 
 
 ### Run tests
-
 - `mix test` runs all tests (both unit and integration tests)
 - `mix test.unit` runs unit tests
 - `mix test.integration` run integration tests
