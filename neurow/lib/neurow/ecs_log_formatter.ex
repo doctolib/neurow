@@ -23,7 +23,7 @@ defmodule Neurow.EcsLogFormatter do
         }
       },
       "ecs.version" => "8.11.0",
-      "message" => message,
+      "message" => inline(message),
       "category" => metadata[:category] || "app",
       "service" => %{
         name: "neurow",
@@ -38,9 +38,11 @@ defmodule Neurow.EcsLogFormatter do
 
   defp with_optional_attribute(payload, attribute, attribute_name) do
     if attribute,
-      do: Map.put(payload, attribute_name, attribute),
+      do: Map.put(payload, attribute_name, inline(attribute)),
       else: payload
   end
+
+  def inline(string), do: String.replace(string, ~r/\n/, "\\n")
 
   defp new_line(msg), do: "#{msg}\n"
 end

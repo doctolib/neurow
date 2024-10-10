@@ -100,4 +100,51 @@ defmodule Neurow.EcsLogFormatterTest do
              "error.code" => "invalid_last_event_id"
            }
   end
+
+  test "multiline messages are inlined" do
+    metadata = %{
+      time: 1_728_556_213_722_376,
+      mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
+      file: "test/neurow/ecs_log_formatter_test.exs",
+      line: 10
+    }
+
+    json_log =
+      Neurow.EcsLogFormatter.format(:info, "Hello \n world!", nil, metadata)
+      |> :jiffy.decode([:return_maps])
+
+    assert json_log["message"] == "Hello \\n world!"
+  end
+
+  test "multiline trace_id are inlined" do
+    metadata = %{
+      time: 1_728_556_213_722_376,
+      mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
+      file: "test/neurow/ecs_log_formatter_test.exs",
+      line: 10,
+      trace_id: "123\n456"
+    }
+
+    json_log =
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
+      |> :jiffy.decode([:return_maps])
+
+    assert json_log["trace.id"] == "123\\n456"
+  end
+
+  test "multiline error_code are inlined" do
+    metadata = %{
+      time: 1_728_556_213_722_376,
+      mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
+      file: "test/neurow/ecs_log_formatter_test.exs",
+      line: 10,
+      error_code: "bad\nerror code"
+    }
+
+    json_log =
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
+      |> :jiffy.decode([:return_maps])
+
+    assert json_log["error.code"] == "bad\\nerror code"
+  end
 end
