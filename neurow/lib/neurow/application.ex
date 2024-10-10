@@ -1,6 +1,7 @@
 defmodule Neurow.Application do
   @moduledoc false
 
+  # Resolved at compile time
   @mix_env Mix.env()
 
   require Logger
@@ -37,8 +38,8 @@ defmodule Neurow.Application do
         history_min_duration: history_min_duration,
         cluster_topologies: cluster_topologies
       }) do
-    Logger.warning("Current host #{node()}, environment: #{@mix_env}")
-    Logger.warning("Starting internal API on port #{internal_api_port}")
+    Logger.info("Current host #{node()}, environment: #{@mix_env}")
+    Logger.info("Starting internal API on port #{internal_api_port}")
 
     base_public_api_http_config = [
       port: public_api_port,
@@ -48,7 +49,7 @@ defmodule Neurow.Application do
 
     {sse_http_scheme, public_api_http_config} =
       if ssl_keyfile != nil do
-        Logger.warning(
+        Logger.info(
           "Starting public API on port #{public_api_port}, with keyfile: #{ssl_keyfile}, certfile: #{ssl_certfile}"
         )
 
@@ -61,7 +62,7 @@ defmodule Neurow.Application do
 
         {:https, http_config}
       else
-        Logger.warning("Starting public API on port #{public_api_port} without SSL")
+        Logger.info("Starting public API on port #{public_api_port} without SSL")
         {:http, base_public_api_http_config}
       end
 

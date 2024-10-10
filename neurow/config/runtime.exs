@@ -1,8 +1,21 @@
 import Config
 
-config :logger, :console,
-  format: "$time $metadata[$level] $message\n",
-  level: String.to_atom(System.get_env("LOG_LEVEL") || "info")
+case System.get_env("LOG_FORMAT") do
+  log_format when log_format in ["TEXT", nil] ->
+    config :logger, :console,
+      metadata: [:mfa],
+      format: "$time $metadata[$level] $message\n",
+      level: String.to_atom(System.get_env("LOG_LEVEL") || "info")
+
+  "ECS" ->
+    config :logger, :console,
+      metadata: :all,
+      level: String.to_atom(System.get_env("LOG_LEVEL") || "info"),
+      format: {Neurow.EcsLogFormatter, :format}
+
+  other_format ->
+    raise "Unsupported log format: '#{other_format}'"
+end
 
 # Public API configuration
 config :neurow,
