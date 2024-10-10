@@ -1,3 +1,5 @@
+# Executed at execution time
+
 import Config
 
 case System.get_env("LOG_FORMAT") do
