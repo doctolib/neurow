@@ -210,8 +210,17 @@ defmodule Neurow.JwtAuthPlug do
   end
 
   defp forbidden(conn, error_code, error_message, options) do
-    Logger.debug(
-      "JWT authentication error path: #{conn.request_path}, audience: #{options |> Options.audience()} error: #{error_code} - #{error_message}"
+    jwt_token =
+      case conn |> jwt_token_from_request() do
+        {:ok, jwt_token} -> jwt_token
+        _ -> nil
+      end
+
+    Logger.error(
+      "JWT authentication error: #{error_code} - #{error_message}, path: '#{conn.request_path}', audience: '#{options |> Options.audience()}', token: '#{jwt_token}'",
+      category: "security",
+      error_code: "jwt_authentication.#{error_code}",
+      trace_id: conn |> get_req_header("x-request-id") |> List.first()
     )
 
     conn =
