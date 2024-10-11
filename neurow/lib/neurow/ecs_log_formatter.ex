@@ -2,18 +2,23 @@ defmodule Neurow.EcsLogFormatter do
   # Resolved at compile time
   @revision System.get_env("GIT_COMMIT_SHA1") || "unknown"
 
+  @ecs_version "8.11.0"
+
   # ECS Reference: https://www.elastic.co/guide/en/ecs/current/index.html
 
   def format(level, message, _timestamp, metadata) do
     # The timestamp provided in input parameter is in the system timezone,
     # but there is no clean way to get the system timezone in Elixir/Erlang to convert it to UTC and/or format it in ISO8601.
     # So we use the unix timestamp provided in the metadata to get the event datetime time in UTC
-    {:ok, event_datetime} = DateTime.from_unix(metadata[:time], :microsecond)
+    event_datetime =
+      metadata[:time]
+      |> DateTime.from_unix!(:microsecond)
+      |> DateTime.to_iso8601()
 
     {module, function, arity} = metadata[:mfa]
 
     %{
-      "@timestamp" => event_datetime |> DateTime.to_iso8601(),
+      "@timestamp" => event_datetime,
       "log.level" => level,
       "log.name" => "#{module}.#{function}/#{arity}",
       "log.source" => %{
@@ -22,7 +27,7 @@ defmodule Neurow.EcsLogFormatter do
           line: metadata[:line]
         }
       },
-      "ecs.version" => "8.11.0",
+      "ecs.version" => @ecs_version,
       "message" => inline(message),
       "category" => metadata[:category] || "app",
       "service" => %{
@@ -33,16 +38,16 @@ defmodule Neurow.EcsLogFormatter do
     |> with_optional_attribute(metadata[:trace_id], "trace.id")
     |> with_optional_attribute(metadata[:error_code], "error.code")
     |> :jiffy.encode()
-    |> new_line()
+    |> newline()
   end
 
-  defp with_optional_attribute(payload, attribute, attribute_name) do
-    if attribute,
-      do: Map.put(payload, attribute_name, inline(attribute)),
-      else: payload
+  defp with_optional_attribute(payload, nil, _key), do: payload
+
+  defp with_optional_attribute(payload, value, key) do
+    Map.put(payload, key, inline(value))
   end
 
   def inline(string), do: String.replace(string, ~r/\n/, "\\n")
 
-  defp new_line(msg), do: "#{msg}\n"
+  defp newline(msg), do: msg <> "\n"
 end
