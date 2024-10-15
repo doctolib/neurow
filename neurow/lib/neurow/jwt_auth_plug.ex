@@ -220,7 +220,8 @@ defmodule Neurow.JwtAuthPlug do
       "JWT authentication error: #{error_code} - #{error_message}, path: '#{conn.request_path}', audience: '#{options |> Options.audience()}', token: '#{jwt_token}'",
       category: "security",
       error_code: "jwt_authentication.#{error_code}",
-      trace_id: conn |> get_req_header("x-request-id") |> List.first()
+      trace_id: conn |> get_req_header("x-request-id") |> List.first(),
+      client_ip: conn |> get_req_header("x-forwarded-for") |> List.first()
     )
 
     conn =
