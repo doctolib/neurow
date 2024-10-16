@@ -101,6 +101,40 @@ defmodule Neurow.EcsLogFormatterTest do
            }
   end
 
+  test "supports optional client_ip metadata" do
+    metadata = %{
+      time: 1_728_556_213_722_376,
+      mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
+      file: "test/neurow/ecs_log_formatter_test.exs",
+      line: 10,
+      client_ip: "127.01.02.03"
+    }
+
+    json_log =
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
+      |> :jiffy.decode([:return_maps])
+
+    assert json_log == %{
+             "@timestamp" => "2024-10-10T10:30:13.722376Z",
+             "log.level" => "info",
+             "log.name" => "Elixir.Neurow.EcsLogFormatterTest.fake_function/4",
+             "log.source" => %{
+               "file" => %{
+                 "name" => "test/neurow/ecs_log_formatter_test.exs",
+                 "line" => 10
+               }
+             },
+             "ecs.version" => "8.11.0",
+             "message" => "Hello, world!",
+             "category" => "app",
+             "service" => %{
+               "name" => "neurow",
+               "version" => "unknown"
+             },
+             "client.ip" => "127.01.02.03"
+           }
+  end
+
   test "multiline messages are inlined" do
     metadata = %{
       time: 1_728_556_213_722_376,
