@@ -5,7 +5,7 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-s
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
@@ -19,7 +19,7 @@ jobs:
       - run: cd neurow && mix test
 
   ci-loadtest:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-s
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
@@ -31,13 +31,13 @@ jobs:
       - run: cd load_test && mix compile --warnings-as-errors
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-s
     steps:
       - uses: actions/checkout@v4
       - run: |
-          cd neurow 
+          cd neurow
           docker build . -t neurow:${{ github.sha }}
           docker run -e JWT_CONFIG="{\"local_name\":\"neurow\",\"service_name\":\"neurow\",\"algorithm\":\"HS256\",\"clients\":{\"test\":\"secret\"}}" -d --name neurow_${{ github.sha }}_test neurow:${{ github.sha }}
-          docker exec neurow_${{ github.sha }}_test curl -v --retry 5 --retry-connrefused --retry-max-time 30 --retry-delay 6 http://localhost:3000/ping 
+          docker exec neurow_${{ github.sha }}_test curl -v --retry 5 --retry-connrefused --retry-max-time 30 --retry-delay 6 http://localhost:3000/ping
           docker stop neurow_${{ github.sha }}_test
           docker rm neurow_${{ github.sha }}_test

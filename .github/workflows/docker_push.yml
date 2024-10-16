@@ -11,7 +11,7 @@ on:
 
 jobs:
   docker_push:
-    runs-on: ubuntu-latest
+    runs-on: prod-linux-s
     steps:
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v 4.0.1
