@@ -16,7 +16,7 @@ defmodule Neurow.Application do
     {:ok, ssl_keyfile} = Application.fetch_env(:neurow, :ssl_keyfile)
     {:ok, ssl_certfile} = Application.fetch_env(:neurow, :ssl_certfile)
     {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
-    {:ok, max_header_length} = Application.fetch_env(:neurow, :max_header_length)
+    {:ok, max_header_value_length} = Application.fetch_env(:neurow, :max_header_value_length)
 
     cluster_topologies =
       Application.get_env(:neurow, :cluster_topologies, cluster_topologies_from_env_variables())
@@ -26,7 +26,7 @@ defmodule Neurow.Application do
       internal_api_port: internal_api_port,
       ssl_keyfile: ssl_keyfile,
       ssl_certfile: ssl_certfile,
-      max_header_length: max_header_length,
+      max_header_value_length: max_header_value_length,
       history_min_duration: history_min_duration,
       cluster_topologies: cluster_topologies
     })
@@ -37,7 +37,7 @@ defmodule Neurow.Application do
         internal_api_port: internal_api_port,
         ssl_keyfile: ssl_keyfile,
         ssl_certfile: ssl_certfile,
-        max_header_length: max_header_length,
+        max_header_value_length: max_header_value_length,
         history_min_duration: history_min_duration,
         cluster_topologies: cluster_topologies
       }) do
@@ -47,7 +47,7 @@ defmodule Neurow.Application do
     base_public_api_http_config = [
       port: public_api_port,
       protocol_options: [
-        max_header_value_length: max_header_length,
+        max_header_value_length: max_header_value_length,
         idle_timeout: :infinity
       ],
       transport_options: [max_connections: :infinity]

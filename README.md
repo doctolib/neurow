@@ -35,6 +35,7 @@ Available environment variables are:
 | `PREFLIGHT_MAX_AGE` | 86400 | Value of the `access-control-max-age` headers on CROS preflight responses on the public API |
 | `SSE_TIMEOUT` | 900000 | SSE deconnection delay in ms, after the last received message
 | `SSE_KEEPALIVE` | 600000 | Neurow periodically send `ping` events on SSE connections to prevent connections from being closed by network devices. This variable defines the delay between two ping events in milliseconds. |
+| `MAX_HEADER_VALUE_LENGTH`| 8192 | Max http request headers size, as expected by the cowboy HTTP server [here](https://ninenines.eu/docs/en/cowboy/2.12/manual/cowboy_http/) |
 | `INTERNAL_API_PORT` | 3000 | TCP port fo the internal API |
 | `INTERNAL_API_JWT_MAX_LIFETIME` | 1500 | Max lifetime in seconds allowed for JWT tokens issued on the internal API |
 | `HISTORY_MIN_DURATION` | 30 | Messages are persisted in the Neurow cluster, so clients can re-fetch recent messages after a short term disconnection by using the `Last-Event-Id` on SSE connections. Messages are only persisted for a limited time. `HISTORY_MIN_DURATION` defines the minimum retention guaranteed by the Neurow server.

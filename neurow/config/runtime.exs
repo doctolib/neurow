@@ -29,7 +29,7 @@ config :neurow,
   public_api_context_path: System.get_env("PUBLIC_API_CONTEXT_PATH") || "",
   sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000"),
   sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000"),
-  max_header_length: String.to_integer(System.get_env("MAX_HEADER_LENGTH") || "8192")
+  max_header_value_length: String.to_integer(System.get_env("MAX_HEADER_VALUE_LENGTH") || "8192")
 
 # Internal API configuration
 config :neurow,
