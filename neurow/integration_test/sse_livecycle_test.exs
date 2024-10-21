@@ -107,6 +107,26 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
     end
   end
 
+  describe "header HTTP size" do
+    test "supports HTTP headers up to 8k with the default configuration", %{
+      cluster_state: %{
+        public_api_ports: [first_public_port | _other_ports]
+      }
+    } do
+      fake_cookie = String.duplicate("a", 8_000)
+
+      subscribe(
+        first_public_port,
+        "test_topic",
+        fn ->
+          assert_receive %HTTPoison.AsyncStatus{code: 200}
+          assert_receive %HTTPoison.AsyncHeaders{}
+        end,
+        cookie: fake_cookie
+      )
+    end
+  end
+
   def override_timeout(timeout) do
     {:ok, default_timeout} = Application.fetch_env(:neurow, :sse_timeout)
     TestCluster.update_sse_timeout(timeout)
