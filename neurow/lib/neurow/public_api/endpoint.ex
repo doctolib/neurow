@@ -2,9 +2,6 @@ defmodule Neurow.PublicApi.Endpoint do
   require Logger
   import Plug.Conn
   use Plug.Router
-
-  plug(:monitor_sse)
-
   plug(:preflight_request)
 
   plug(Neurow.JwtAuthPlug,
@@ -14,7 +11,7 @@ defmodule Neurow.PublicApi.Endpoint do
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
-    inc_error_callback: &Stats.inc_jwt_errors_public/0
+    inc_error_callback: &Neurow.Stats.Security.inc_jwt_errors_public/0
   )
 
   plug(:match)
@@ -52,6 +49,9 @@ defmodule Neurow.PublicApi.Endpoint do
         :ok = Neurow.StopListener.subscribe()
         :ok = Phoenix.PubSub.subscribe(Neurow.PubSub, topic)
 
+        {:ok, _pid} =
+          Neurow.PublicApi.SSEMonitor.start_link(issuer)
+
         last_event_id = extract_last_event_id(conn)
 
         case last_event_id do
@@ -71,7 +71,7 @@ defmodule Neurow.PublicApi.Endpoint do
             conn
             |> send_chunked(200)
             |> import_history(topic, last_event_id)
-            |> loop(timeout_ms, keep_alive_ms, now_ms, now_ms, exp)
+            |> loop(timeout_ms, keep_alive_ms, now_ms, now_ms, exp, issuer)
         end
 
       _ ->
@@ -186,7 +186,7 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s) do
+  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s, issuer) do
     now_ms = :os.system_time(:millisecond)
 
     cond do
@@ -204,7 +204,8 @@ defmodule Neurow.PublicApi.Endpoint do
           keep_alive_ms,
           last_message_ms,
           now_ms,
-          jwt_exp_s
+          jwt_exp_s,
+          issuer
         )
 
       # JWT token expired, send a credentials_expired event and stop the connection
@@ -226,7 +227,8 @@ defmodule Neurow.PublicApi.Endpoint do
         receive do
           {:pubsub_message, message} ->
             conn = write_chunk(conn, message)
-            Stats.inc_msg_published()
+
+            Neurow.Stats.MessageBroker.inc_message_sent(issuer)
             new_last_message_ms = :os.system_time(:millisecond)
 
             conn
@@ -235,7 +237,8 @@ defmodule Neurow.PublicApi.Endpoint do
               keep_alive_ms,
               new_last_message_ms,
               new_last_message_ms,
-              jwt_exp_s
+              jwt_exp_s,
+              issuer
             )
 
           :shutdown ->
@@ -244,10 +247,26 @@ defmodule Neurow.PublicApi.Endpoint do
 
           # Consume useless messages to avoid memory overflow
           _ ->
-            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s)
+            conn
+            |> loop(
+              sse_timeout_ms,
+              keep_alive_ms,
+              last_message_ms,
+              last_ping_ms,
+              jwt_exp_s,
+              issuer
+            )
         after
           next_tick_ms ->
-            conn |> loop(sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s)
+            conn
+            |> loop(
+              sse_timeout_ms,
+              keep_alive_ms,
+              last_message_ms,
+              last_ping_ms,
+              jwt_exp_s,
+              issuer
+            )
         end
     end
   end
@@ -300,10 +319,5 @@ defmodule Neurow.PublicApi.Endpoint do
     Enum.any?(Application.fetch_env!(:neurow, :public_api_allowed_origins), fn allowed_origin ->
       String.match?(origin, allowed_origin)
     end)
-  end
-
-  defp monitor_sse(conn, _) do
-    {:ok, _pid} = SSEMonitor.start_link(conn)
-    conn
   end
 end

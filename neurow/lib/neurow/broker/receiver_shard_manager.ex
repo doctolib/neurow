@@ -35,17 +35,23 @@ defmodule Neurow.Broker.ReceiverShardManager do
     {:noreply, state}
   end
 
-  def all_pids(fun) do
+  def receiver_shards() do
     Enum.map(0..(@shards - 1), fn shard ->
-      fun.({shard, Neurow.Broker.ReceiverShard.build_name(shard)})
+      {shard, Neurow.Broker.ReceiverShard.build_name(shard)}
     end)
   end
 
   def rotate do
-    Stats.inc_history_rotate()
+    Neurow.Stats.MessageBroker.inc_history_rotate()
 
-    all_pids(fn {_, pid} ->
+    Enum.each(receiver_shards(), fn {_shard, pid} ->
       send(pid, {:rotate})
+    end)
+  end
+
+  def topic_count do
+    Enum.reduce(receiver_shards(), 0, fn {_shard, pid}, acc ->
+      acc + (pid |> Neurow.Broker.ReceiverShard.topic_count())
     end)
   end
 
@@ -57,7 +63,7 @@ defmodule Neurow.Broker.ReceiverShardManager do
 
   @impl true
   def handle_call({:flush_history}, _from, state) do
-    all_pids(fn {_, pid} ->
+    Enum.each(receiver_shards(), fn {_shard, pid} ->
       pid |> Neurow.Broker.ReceiverShard.flush_history()
     end)
 
@@ -74,7 +80,7 @@ defmodule Neurow.Broker.ReceiverShardManager do
   end
 
   def create_receivers() do
-    all_pids(fn {shard, pid} ->
+    Enum.map(receiver_shards(), fn {shard, pid} ->
       Supervisor.child_spec({Neurow.Broker.ReceiverShard, shard}, id: pid)
     end)
   end
