@@ -18,7 +18,7 @@ defmodule Neurow.Stats do
 
       Counter.declare(
         name: :subscription_lifecycle,
-        labels: [:issuer, :kind],
+        labels: [:kind, :issuer],
         help: "Count subscriptions and unsubscriptions"
       )
 
@@ -29,14 +29,8 @@ defmodule Neurow.Stats do
       )
 
       Counter.declare(
-        name: :message_published,
-        labels: [:issuer],
-        help: "Messages published on the internal interface"
-      )
-
-      Counter.declare(
-        name: :message_sent,
-        labels: [:issuer],
+        name: :message,
+        labels: [:kind, :issuer],
         help: "Messages sent through topic subscriptions"
       )
 
@@ -56,10 +50,11 @@ defmodule Neurow.Stats do
 
       Enum.each(Neurow.Configuration.issuers(), fn issuer ->
         Gauge.set([name: :concurrent_subscription, labels: [issuer]], 0)
-        Counter.reset(name: :subscription_lifecycle, labels: [issuer, :created])
-        Counter.reset(name: :subscription_lifecycle, labels: [issuer, :released])
+        Counter.reset(name: :subscription_lifecycle, labels: [:created, issuer])
+        Counter.reset(name: :subscription_lifecycle, labels: [:released, issuer])
         Counter.reset(name: :message_published, labels: [issuer])
-        Counter.reset(name: :message_sent, labels: [issuer])
+        Counter.reset(name: :message, labels: [:published, issuer])
+        Counter.reset(name: :message, labels: [:sent, issuer])
         Summary.reset(name: :subscription_duration_ms, labels: [issuer])
       end)
 
@@ -72,22 +67,22 @@ defmodule Neurow.Stats do
     end
 
     def inc_subscriptions(issuer) do
-      Counter.inc(name: :subscription_lifecycle, labels: [issuer, :created])
+      Counter.inc(name: :subscription_lifecycle, labels: [:created, issuer])
       Gauge.inc(name: :concurrent_subscription, labels: [issuer])
     end
 
     def dec_subscriptions(issuer, duration_ms) do
-      Counter.inc(name: :subscription_lifecycle, labels: [issuer, :released])
+      Counter.inc(name: :subscription_lifecycle, labels: [:released, issuer])
       Gauge.dec(name: :concurrent_subscription, labels: [issuer])
       Summary.observe([name: :subscription_duration_ms, labels: [issuer]], duration_ms)
     end
 
     def inc_message_published(issuer) do
-      Counter.inc(name: :message_published, labels: [issuer])
+      Counter.inc(name: :message, labels: [:published, issuer])
     end
 
     def inc_message_sent(issuer) do
-      Counter.inc(name: :message_sent, labels: [issuer])
+      Counter.inc(name: :message, labels: [:sent, issuer])
     end
 
     def inc_history_rotate() do
@@ -108,6 +103,9 @@ defmodule Neurow.Stats do
         labels: [:interface, :status],
         help: "HTTP request count"
       )
+
+      Summary.reset(name: :http_request_duration_ms, labels: [:public_api])
+      Summary.reset(name: :http_request_duration_ms, labels: [:internal_api])
 
       # Please read https://github.com/beam-telemetry/cowboy_telemetry
       :telemetry.attach_many(
