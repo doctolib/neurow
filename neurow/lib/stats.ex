@@ -52,7 +52,6 @@ defmodule Neurow.Stats do
         Gauge.set([name: :concurrent_subscription, labels: [issuer]], 0)
         Counter.reset(name: :subscription_lifecycle, labels: [:created, issuer])
         Counter.reset(name: :subscription_lifecycle, labels: [:released, issuer])
-        Counter.reset(name: :message_published, labels: [issuer])
         Counter.reset(name: :message, labels: [:published, issuer])
         Counter.reset(name: :message, labels: [:sent, issuer])
         Summary.reset(name: :subscription_duration_ms, labels: [issuer])
