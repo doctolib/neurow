@@ -124,13 +124,20 @@ defmodule Neurow.JwtAuthPlug do
     end)
   end
 
-  defp jwt_token_from_request(conn) do
-    case conn |> get_req_header("authorization") do
-      ["Bearer " <> jwt_token] ->
-        {:ok, jwt_token}
+  @auth_header_keys ["x-interservice-authorization", "authorization"]
 
-      _ ->
-        {:error, :invalid_authorization_header, "Invalid authorization header"}
+  defp jwt_token_from_request(conn) do
+    # this is temporary code while moving to the new header, we now need to support both
+    # see https://doctolib.atlassian.net/wiki/spaces/TTP/pages/2101248004/TEP+C+011+-+Usage+of+a+proprietary+HTTP+header+for+inter-services+communication
+    Enum.find_value(@auth_header_keys, fn header ->
+      case get_req_header(conn, header) do
+        ["Bearer " <> jwt_token] -> jwt_token
+        _ -> nil
+      end
+    end)
+    |> case do
+      nil -> {:error, :invalid_authorization_header, "Invalid authorization header"}
+      jwt_token -> {:ok, jwt_token}
     end
   end
 
