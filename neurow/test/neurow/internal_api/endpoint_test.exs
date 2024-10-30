@@ -18,7 +18,7 @@ defmodule Neurow.InternalApi.EndpointTest do
     assert call.status == 200
   end
 
-  test "other routes requires a JWT token" do
+  test "other routes requires a JWT sent in authorization header" do
     conn = conn(:get, "/foo")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
     assert call.status == 403
@@ -26,6 +26,19 @@ defmodule Neurow.InternalApi.EndpointTest do
     conn =
       conn(:get, "/foo")
       |> put_jwt_token_in_req_header_internal_api()
+
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
+    assert call.status == 404
+  end
+
+  test "other routes requires a JWT sent in x-interservice-authorization header" do
+    conn = conn(:get, "/foo")
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
+    assert call.status == 403
+
+    conn =
+      conn(:get, "/foo")
+      |> put_jwt_token_in_req_header_internal_api("test_issuer1", "x-interservice-authorization")
 
     call = Neurow.InternalApi.Endpoint.call(conn, [])
     assert call.status == 404
