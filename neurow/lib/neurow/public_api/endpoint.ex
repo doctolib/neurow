@@ -5,6 +5,7 @@ defmodule Neurow.PublicApi.Endpoint do
   plug(:preflight_request)
 
   plug(Neurow.JwtAuthPlug,
+    auth_header_keys: ["authorization"],
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
     audience: &Neurow.Configuration.public_api_audience/0,
     send_forbidden: &Neurow.PublicApi.Endpoint.send_forbidden/3,

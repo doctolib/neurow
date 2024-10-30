@@ -5,6 +5,7 @@ defmodule Neurow.JwtAuthPlug do
 
   defmodule Options do
     defstruct [
+      :auth_header_keys,
       :jwk_provider,
       :audience,
       :max_lifetime,
@@ -48,7 +49,7 @@ defmodule Neurow.JwtAuthPlug do
     case requires_jwt_authentication?(conn, options) do
       true ->
         with(
-          {:ok, jwt_token_str} <- jwt_token_from_request(conn),
+          {:ok, jwt_token_str} <- jwt_token_from_request(conn, options),
           {:ok, _protected, payload} <- parse_jwt_token(jwt_token_str),
           {:ok, jwks} <- fetch_jwks_from_issuer(payload, options),
           {:ok} <- check_signature(jwt_token_str, jwks, options),
@@ -124,12 +125,10 @@ defmodule Neurow.JwtAuthPlug do
     end)
   end
 
-  @auth_header_keys ["x-interservice-authorization", "authorization"]
-
-  defp jwt_token_from_request(conn) do
+  defp jwt_token_from_request(conn, options) do
     # this is temporary code while moving to the new header, we now need to support both
     # see https://doctolib.atlassian.net/wiki/spaces/TTP/pages/2101248004/TEP+C+011+-+Usage+of+a+proprietary+HTTP+header+for+inter-services+communication
-    Enum.find_value(@auth_header_keys, fn header ->
+    Enum.find_value(options.auth_header_keys, fn header ->
       case get_req_header(conn, header) do
         ["Bearer " <> jwt_token] -> jwt_token
         _ -> nil
@@ -218,7 +217,7 @@ defmodule Neurow.JwtAuthPlug do
 
   defp forbidden(conn, error_code, error_message, options) do
     jwt_token =
-      case conn |> jwt_token_from_request() do
+      case conn |> jwt_token_from_request(options) do
         {:ok, jwt_token} -> jwt_token
         _ -> nil
       end

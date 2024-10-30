@@ -1,4 +1,4 @@
-defmodule Neurow.JwtAuthPlugAuthorizationHeaderTest do
+defmodule Neurow.JwtAuthPlugTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
@@ -15,6 +15,7 @@ defmodule Neurow.JwtAuthPlugAuthorizationHeaderTest do
     {:ok,
      default_opts:
        Neurow.JwtAuthPlug.init(%{
+         auth_header_keys: ["authorization"],
          audience: @test_audience,
          verbose_authentication_errors: true,
          max_lifetime: 60 * 2,
