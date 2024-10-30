@@ -1,4 +1,4 @@
-defmodule Neurow.JwtAuthPlugTest do
+defmodule Neurow.JwtAuthPlugAuthorizationHeaderTest do
   use ExUnit.Case
   use Plug.Test
   import JwtHelper
@@ -43,7 +43,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
     response =
       Neurow.JwtAuthPlug.call(
-        conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+        conn(:get, "/test")
+        |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
         opts
       )
 
@@ -150,7 +151,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -168,7 +170,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -189,7 +192,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_2),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_2, "authorization"),
           opts
         )
 
@@ -248,7 +252,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_2_jwk),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_2_jwk, "authorization"),
           opts
         )
 
@@ -268,7 +273,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -286,7 +292,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -304,7 +311,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -322,7 +330,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -341,7 +350,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -362,7 +372,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -385,7 +396,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -405,7 +417,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 
@@ -423,7 +436,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
       response =
         Neurow.JwtAuthPlug.call(
-          conn(:get, "/test") |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1),
+          conn(:get, "/test")
+          |> put_jwt_token_in_req_header(jwt_payload, @issuer_1_jwk_1, "authorization"),
           opts
         )
 

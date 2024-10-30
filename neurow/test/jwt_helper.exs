@@ -11,9 +11,9 @@ defmodule JwtHelper do
     compact_signed
   end
 
-  def put_jwt_token_in_req_header(conn, jwt, jwk) do
+  def put_jwt_token_in_req_header(conn, jwt, jwk, header_key) do
     jwt_token = signed_jwt_token(jwt, jwk)
-    conn |> put_req_header("authorization", "Bearer #{jwt_token}")
+    conn |> put_req_header(header_key, "Bearer #{jwt_token}")
   end
 
   def put_jwt_token_in_req_header_internal_api(conn, issuer \\ "test_issuer1") do
