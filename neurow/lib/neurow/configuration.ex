@@ -5,6 +5,11 @@ defmodule Neurow.Configuration do
     GenServer.start_link(__MODULE__, default, name: __MODULE__)
   end
 
+  def issuers() do
+    Application.fetch_env!(:neurow, :public_api_authentication)[:issuers]
+    |> Map.keys()
+  end
+
   def public_api_issuer_jwks(issuer_name) do
     GenServer.call(__MODULE__, {:public_api_issuer_jwks, issuer_name})
   end

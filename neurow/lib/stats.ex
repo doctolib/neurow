@@ -1,86 +1,178 @@
-defmodule Stats do
+defmodule Neurow.Stats do
   use Prometheus.Metric
 
   def setup() do
-    Gauge.declare(
-      name: :current_connections,
-      help: "SSE Open connections"
-    )
-
-    Gauge.declare(
-      name: :connections,
-      labels: [:kind],
-      help: "SSE connections"
-    )
-
-    Gauge.declare(
-      name: :messages,
-      labels: [:kind],
-      help: "SSE Messages"
-    )
-
-    Gauge.declare(
-      name: :jwt_errors,
-      labels: [:kind],
-      help: "JWT Errors"
-    )
-
-    Gauge.declare(
-      name: :history_rotate,
-      help: "History rotate counter"
-    )
-
-    Gauge.declare(
-      name: :memory_usage,
-      help: "Memory usage"
-    )
-
-    Gauge.set([name: :current_connections], 0)
-    Gauge.set([name: :connections, labels: [:created]], 0)
-    Gauge.set([name: :connections, labels: [:released]], 0)
-    Gauge.set([name: :jwt_errors, labels: [:public]], 0)
-    Gauge.set([name: :jwt_errors, labels: [:internal]], 0)
-    Gauge.set([name: :messages, labels: [:received]], 0)
-    Gauge.set([name: :messages, labels: [:published]], 0)
-    Gauge.set([name: :history_rotate], 0)
-
-    Periodic.start_link(
-      run: fn -> set_memory_usage() end,
-      every: :timer.seconds(10)
-    )
+    Neurow.Stats.MessageBroker.setup()
+    Neurow.Stats.HttpInterfaces.setup()
+    Neurow.Stats.Security.setup()
+    Neurow.Stats.System.setup()
   end
 
-  def inc_connections() do
-    Gauge.inc(name: :connections, labels: [:created])
-    Gauge.inc(name: :current_connections)
+  defmodule MessageBroker do
+    def setup() do
+      Gauge.declare(
+        name: :concurrent_subscription,
+        labels: [:issuer],
+        help: "Amount of concurrent topic subscriptions"
+      )
+
+      Counter.declare(
+        name: :subscription_lifecycle,
+        labels: [:kind, :issuer],
+        help: "Count subscriptions and unsubscriptions"
+      )
+
+      Summary.declare(
+        name: :subscription_duration_ms,
+        labels: [:issuer],
+        help: "Duration of topic subscriptions"
+      )
+
+      Counter.declare(
+        name: :message,
+        labels: [:kind, :issuer],
+        help: "Messages sent through topic subscriptions"
+      )
+
+      Counter.declare(
+        name: :history_rotate,
+        help: "History rotate counter"
+      )
+
+      Gauge.declare(
+        name: :topic_count,
+        help: "Number of topics in the message history"
+      )
+
+      Counter.reset(name: :history_rotate)
+
+      Gauge.set([name: :topic_count], 0)
+
+      Enum.each(Neurow.Configuration.issuers(), fn issuer ->
+        Gauge.set([name: :concurrent_subscription, labels: [issuer]], 0)
+        Counter.reset(name: :subscription_lifecycle, labels: [:created, issuer])
+        Counter.reset(name: :subscription_lifecycle, labels: [:released, issuer])
+        Counter.reset(name: :message, labels: [:published, issuer])
+        Counter.reset(name: :message, labels: [:sent, issuer])
+        Summary.reset(name: :subscription_duration_ms, labels: [issuer])
+      end)
+
+      Periodic.start_link(
+        run: fn ->
+          Gauge.set([name: :topic_count], Neurow.Broker.ReceiverShardManager.topic_count())
+        end,
+        every: :timer.seconds(10)
+      )
+    end
+
+    def inc_subscriptions(issuer) do
+      Counter.inc(name: :subscription_lifecycle, labels: [:created, issuer])
+      Gauge.inc(name: :concurrent_subscription, labels: [issuer])
+    end
+
+    def dec_subscriptions(issuer, duration_ms) do
+      Counter.inc(name: :subscription_lifecycle, labels: [:released, issuer])
+      Gauge.dec(name: :concurrent_subscription, labels: [issuer])
+      Summary.observe([name: :subscription_duration_ms, labels: [issuer]], duration_ms)
+    end
+
+    def inc_message_published(issuer) do
+      Counter.inc(name: :message, labels: [:published, issuer])
+    end
+
+    def inc_message_sent(issuer) do
+      Counter.inc(name: :message, labels: [:sent, issuer])
+    end
+
+    def inc_history_rotate() do
+      Counter.inc(name: :history_rotate)
+    end
   end
 
-  def dec_connections() do
-    Gauge.inc(name: :connections, labels: [:released])
-    Gauge.dec(name: :current_connections)
+  defmodule HttpInterfaces do
+    def setup() do
+      Summary.declare(
+        name: :http_request_duration_ms,
+        labels: [:interface],
+        help: "HTTP request duration"
+      )
+
+      Counter.declare(
+        name: :http_request_count,
+        labels: [:interface, :status],
+        help: "HTTP request count"
+      )
+
+      Summary.reset(name: :http_request_duration_ms, labels: [:public_api])
+      Summary.reset(name: :http_request_duration_ms, labels: [:internal_api])
+
+      # Please read https://github.com/beam-telemetry/cowboy_telemetry
+      :telemetry.attach_many(
+        "cowboy_telemetry_handler",
+        [
+          [:cowboy, :request, :stop]
+        ],
+        &Neurow.Stats.HttpInterfaces.handle_event/4,
+        nil
+      )
+    end
+
+    def handle_event([:cowboy, :request, :stop], measurements, metadata, _config) do
+      endpoint =
+        case metadata[:req][:ref] do
+          Neurow.PublicApi.Endpoint.HTTP -> :public_api
+          Neurow.InternalApi.Endpoint.HTTP -> :internal_api
+        end
+
+      duration_ms = System.convert_time_unit(measurements[:duration], :native, :millisecond)
+      resp_status = metadata[:resp_status]
+
+      Counter.inc(name: :http_request_count, labels: [endpoint, resp_status])
+      Summary.observe([name: :http_request_duration_ms, labels: [endpoint]], duration_ms)
+    end
   end
 
-  def inc_msg_received() do
-    Gauge.inc(name: :messages, labels: [:received])
+  defmodule Security do
+    def setup() do
+      Counter.declare(
+        name: :jwt_errors,
+        labels: [:interface],
+        help: "JWT Errors"
+      )
+    end
+
+    def inc_jwt_errors_public() do
+      Counter.inc(name: :jwt_errors, labels: [:public])
+    end
+
+    def inc_jwt_errors_internal() do
+      Counter.inc(name: :jwt_errors, labels: [:internal])
+    end
   end
 
-  def inc_msg_published() do
-    Gauge.inc(name: :messages, labels: [:published])
-  end
+  defmodule System do
+    def setup() do
+      Gauge.declare(
+        name: :memory_usage,
+        help: "Memory usage"
+      )
 
-  def inc_jwt_errors_public() do
-    Gauge.inc(name: :jwt_errors, labels: [:public])
-  end
+      Boolean.declare(
+        name: :stopping,
+        help: "The node is currently stopping"
+      )
 
-  def inc_jwt_errors_internal() do
-    Gauge.inc(name: :jwt_errors, labels: [:internal])
-  end
+      Gauge.set([name: :memory_usage], 0)
+      Boolean.set([name: :stopping], false)
 
-  def inc_history_rotate() do
-    Gauge.inc(name: :history_rotate)
-  end
+      Periodic.start_link(
+        run: fn -> Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage)) end,
+        every: :timer.seconds(10)
+      )
+    end
 
-  def set_memory_usage() do
-    Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage))
+    def report_shutdown() do
+      Boolean.set([name: :stopping], true)
+    end
   end
 end

@@ -21,6 +21,10 @@ defmodule Neurow.Broker.ReceiverShard do
     GenServer.call(shard, {:flush_history})
   end
 
+  def topic_count(shard) do
+    GenServer.call(shard, {:topic_count})
+  end
+
   @impl true
   def init(shard) do
     :ok =
@@ -72,5 +76,10 @@ defmodule Neurow.Broker.ReceiverShard do
     :ets.delete_all_objects(table_0)
     :ets.delete_all_objects(table_1)
     {:reply, :ok, {table_0, table_1}}
+  end
+
+  @impl true
+  def handle_call({:topic_count}, _from, {table_0, table_1}) do
+    {:reply, :ets.info(table_0)[:size] + :ets.info(table_1)[:size], {table_0, table_1}}
   end
 end

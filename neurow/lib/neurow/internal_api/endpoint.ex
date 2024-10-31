@@ -15,7 +15,7 @@ defmodule Neurow.InternalApi.Endpoint do
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
     send_forbidden: &Neurow.InternalApi.Endpoint.send_forbidden/3,
-    inc_error_callback: &Stats.inc_jwt_errors_internal/0,
+    inc_error_callback: &Neurow.Stats.Security.inc_jwt_errors_internal/0,
     exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above", "/history"]
   )
 
@@ -78,7 +78,7 @@ defmodule Neurow.InternalApi.Endpoint do
 
   post "/v1/publish" do
     case extract_params(conn) do
-      {:ok, messages, topics} ->
+      {:ok, issuer, messages, topics} ->
         publish_timestamp = :os.system_time(:millisecond)
 
         nb_publish =
@@ -96,7 +96,7 @@ defmodule Neurow.InternalApi.Endpoint do
           end)
         end)
 
-        Stats.inc_msg_received()
+        Neurow.Stats.MessageBroker.inc_message_published(issuer)
 
         conn
         |> put_resp_header("content-type", "application/json")
@@ -126,7 +126,7 @@ defmodule Neurow.InternalApi.Endpoint do
       full_topics =
         Enum.map(PublishRequest.topics(publish_request), fn topic -> "#{issuer}-#{topic}" end)
 
-      {:ok, PublishRequest.messages(publish_request), full_topics}
+      {:ok, issuer, PublishRequest.messages(publish_request), full_topics}
     else
       error ->
         error
