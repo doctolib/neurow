@@ -16,10 +16,14 @@ defmodule JwtHelper do
     conn |> put_req_header("authorization", "Bearer #{jwt_token}")
   end
 
-  def put_jwt_token_in_req_header_internal_api(conn, issuer \\ "test_issuer1") do
+  def put_jwt_token_in_req_header_internal_api(
+        conn,
+        issuer \\ "test_issuer1",
+        header_name \\ "authorization"
+      ) do
     conn
     |> put_req_header(
-      "authorization",
+      header_name,
       "Bearer #{compute_jwt_token_in_req_header_internal_api(issuer)}"
     )
     |> put_req_header("content-type", "application/json")

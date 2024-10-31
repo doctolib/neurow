@@ -9,6 +9,7 @@ defmodule Neurow.InternalApi.Endpoint do
   plug(MetricsPlugExporter)
 
   plug(Neurow.JwtAuthPlug,
+    credential_headers: ["x-interservice-authorization", "authorization"],
     jwk_provider: &Neurow.Configuration.internal_api_issuer_jwks/1,
     audience: &Neurow.Configuration.internal_api_audience/0,
     verbose_authentication_errors:

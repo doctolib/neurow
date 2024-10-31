@@ -5,6 +5,7 @@ defmodule Neurow.JwtAuthPlug do
 
   defmodule Options do
     defstruct [
+      :credential_headers,
       :jwk_provider,
       :audience,
       :max_lifetime,
@@ -48,7 +49,7 @@ defmodule Neurow.JwtAuthPlug do
     case requires_jwt_authentication?(conn, options) do
       true ->
         with(
-          {:ok, jwt_token_str} <- jwt_token_from_request(conn),
+          {:ok, jwt_token_str} <- jwt_token_from_request(conn, options),
           {:ok, _protected, payload} <- parse_jwt_token(jwt_token_str),
           {:ok, jwks} <- fetch_jwks_from_issuer(payload, options),
           {:ok} <- check_signature(jwt_token_str, jwks, options),
@@ -124,13 +125,16 @@ defmodule Neurow.JwtAuthPlug do
     end)
   end
 
-  defp jwt_token_from_request(conn) do
-    case conn |> get_req_header("authorization") do
-      ["Bearer " <> jwt_token] ->
-        {:ok, jwt_token}
-
-      _ ->
-        {:error, :invalid_authorization_header, "Invalid authorization header"}
+  defp jwt_token_from_request(conn, options) do
+    Enum.find_value(options.credential_headers, fn header ->
+      case get_req_header(conn, header) do
+        ["Bearer " <> jwt_token] -> jwt_token
+        _ -> nil
+      end
+    end)
+    |> case do
+      nil -> {:error, :invalid_authorization_header, "Invalid authorization header"}
+      jwt_token -> {:ok, jwt_token}
     end
   end
 
@@ -211,7 +215,7 @@ defmodule Neurow.JwtAuthPlug do
 
   defp forbidden(conn, error_code, error_message, options) do
     jwt_token =
-      case conn |> jwt_token_from_request() do
+      case conn |> jwt_token_from_request(options) do
         {:ok, jwt_token} -> jwt_token
         _ -> nil
       end
