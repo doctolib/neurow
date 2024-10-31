@@ -28,7 +28,8 @@ config :neurow,
   public_api_preflight_max_age: String.to_integer(System.get_env("PREFLIGHT_MAX_AGE") || "86400"),
   public_api_context_path: System.get_env("PUBLIC_API_CONTEXT_PATH") || "",
   sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000"),
-  sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000")
+  sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000"),
+  max_header_value_length: String.to_integer(System.get_env("MAX_HEADER_VALUE_LENGTH") || "8192")
 
 # Internal API configuration
 config :neurow,
