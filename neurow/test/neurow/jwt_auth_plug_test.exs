@@ -15,7 +15,7 @@ defmodule Neurow.JwtAuthPlugTest do
     {:ok,
      default_opts:
        Neurow.JwtAuthPlug.init(%{
-         auth_header_keys: ["authorization"],
+         credential_headers: ["authorization"],
          audience: @test_audience,
          verbose_authentication_errors: true,
          max_lifetime: 60 * 2,

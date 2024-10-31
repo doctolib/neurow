@@ -5,7 +5,7 @@ defmodule Neurow.JwtAuthPlug do
 
   defmodule Options do
     defstruct [
-      :auth_header_keys,
+      :credential_headers,
       :jwk_provider,
       :audience,
       :max_lifetime,
@@ -126,7 +126,7 @@ defmodule Neurow.JwtAuthPlug do
   end
 
   defp jwt_token_from_request(conn, options) do
-    Enum.find_value(options.auth_header_keys, fn header ->
+    Enum.find_value(options.credential_headers, fn header ->
       case get_req_header(conn, header) do
         ["Bearer " <> jwt_token] -> jwt_token
         _ -> nil
