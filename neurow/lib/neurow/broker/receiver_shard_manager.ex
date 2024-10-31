@@ -50,9 +50,10 @@ defmodule Neurow.Broker.ReceiverShardManager do
   end
 
   def topic_count do
-    Enum.reduce(receiver_shards(), 0, fn {_shard, pid}, acc ->
-      acc + (pid |> Neurow.Broker.ReceiverShard.topic_count())
-    end)
+    receiver_shards()
+    |> Enum.map(fn {_shard, pid} -> pid end)
+    |> Enum.map(&Neurow.Broker.ReceiverShard.topic_count/1)
+    |> Enum.sum()
   end
 
   @impl true

@@ -247,8 +247,8 @@ defmodule Neurow.PublicApi.Endpoint do
 
           # Consume useless messages to avoid memory overflow
           _ ->
-            conn
-            |> loop(
+            loop(
+              conn,
               sse_timeout_ms,
               keep_alive_ms,
               last_message_ms,
@@ -258,8 +258,8 @@ defmodule Neurow.PublicApi.Endpoint do
             )
         after
           next_tick_ms ->
-            conn
-            |> loop(
+            loop(
+              conn,
               sse_timeout_ms,
               keep_alive_ms,
               last_message_ms,
