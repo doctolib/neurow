@@ -249,10 +249,18 @@ defmodule Neurow.Stats do
             {:initial_call, initial_call}
           ] ->
             mfa_to_string(initial_call)
+
+          _ ->
+            :undefined
         end
 
-      {:current_function, current_function} = Process.info(pid, :current_function)
-      {name_or_initial_func, mfa_to_string(current_function)}
+      case Process.info(pid, :current_function) do
+        {:current_function, current_function} ->
+          {name_or_initial_func, mfa_to_string(current_function)}
+
+        nil ->
+          {name_or_initial_func, :undefined}
+      end
     end
   end
 end

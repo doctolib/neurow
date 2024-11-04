@@ -10,7 +10,7 @@ defmodule Neurow.PublicApi.SSEMonitor do
   def init({issuer, start_time}) do
     Neurow.Stats.MessageBroker.inc_subscriptions(issuer)
     Process.flag(:trap_exit, true)
-    {:ok, {issuer, start_time}}
+    {:ok, {issuer, start_time}, :hibernate}
   end
 
   @impl true

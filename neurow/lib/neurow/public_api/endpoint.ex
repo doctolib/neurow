@@ -225,6 +225,8 @@ defmodule Neurow.PublicApi.Endpoint do
             jwt_exp_s
           )
 
+        :erlang.garbage_collect()
+
         receive do
           {:pubsub_message, message} ->
             conn = write_chunk(conn, message)
