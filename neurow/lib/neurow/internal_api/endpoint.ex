@@ -17,7 +17,14 @@ defmodule Neurow.InternalApi.Endpoint do
     max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
     send_forbidden: &Neurow.InternalApi.Endpoint.send_forbidden/3,
     inc_error_callback: &Neurow.Stats.Security.inc_jwt_errors_internal/0,
-    exclude_path_prefixes: ["/ping", "/nodes", "/cluster_size_above", "/history"]
+    exclude_path_prefixes: [
+      "/ping",
+      "/nodes",
+      "/cluster_size_above",
+      "/history",
+      "/process_stats",
+      "/favicon.ico"
+    ]
   )
 
   plug(:match)
@@ -52,6 +59,15 @@ defmodule Neurow.InternalApi.Endpoint do
     |> send_resp(
       200,
       "Current node: #{node()}\r\nTotal nodes: #{length(nodes) + 1}\r\nNodes: #{inspect(nodes)}\r\n"
+    )
+  end
+
+  get "/process_stats" do
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(
+      200,
+      Jason.encode!(Neurow.Stats.Processes.grouping_stats() |> Enum.map(&Map.from_struct/1))
     )
   end
 
