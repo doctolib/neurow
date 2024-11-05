@@ -42,7 +42,7 @@ defmodule Neurow.Broker.ReceiverShardManager do
   end
 
   def rotate do
-    Neurow.Stats.MessageBroker.inc_history_rotate()
+    Neurow.Observability.MessageBrokerStats.inc_history_rotate()
 
     Enum.each(receiver_shards(), fn {_shard, pid} ->
       send(pid, {:rotate})

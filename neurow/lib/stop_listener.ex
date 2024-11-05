@@ -27,7 +27,7 @@ defmodule Neurow.StopListener do
   def handle_call(:shutdown, _from, state) do
     Logger.info("Graceful shutdown occurring ...")
 
-    Neurow.Stats.System.report_shutdown()
+    Neurow.Observability.SystemStats.report_shutdown()
 
     Registry.dispatch(Registry.StopListener, :shutdown_subscribers, fn entries ->
       Logger.info("Shutting down #{length(entries)} connections")

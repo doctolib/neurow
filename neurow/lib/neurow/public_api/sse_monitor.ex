@@ -8,7 +8,7 @@ defmodule Neurow.PublicApi.SSEMonitor do
 
   @impl true
   def init({issuer, start_time}) do
-    Neurow.Stats.MessageBroker.inc_subscriptions(issuer)
+    Neurow.Observability.MessageBrokerStats.inc_subscriptions(issuer)
     Process.flag(:trap_exit, true)
     {:ok, {issuer, start_time}, :hibernate}
   end
@@ -26,6 +26,6 @@ defmodule Neurow.PublicApi.SSEMonitor do
 
   defp track_subscription_end(issuer, start_time) do
     duration_ms = System.convert_time_unit(:os.system_time() - start_time, :native, :millisecond)
-    Neurow.Stats.MessageBroker.dec_subscriptions(issuer, duration_ms)
+    Neurow.Observability.MessageBrokerStats.dec_subscriptions(issuer, duration_ms)
   end
 end

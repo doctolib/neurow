@@ -92,8 +92,7 @@ defmodule Neurow.Application do
           []
         end
 
-    MetricsPlugExporter.setup()
-    Neurow.Stats.setup()
+    Neurow.Observability.setup()
     JOSE.json_module(:jiffy)
 
     opts = [strategy: :one_for_one, name: Neurow.Supervisor]

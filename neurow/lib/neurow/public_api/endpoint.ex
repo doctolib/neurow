@@ -12,11 +12,13 @@ defmodule Neurow.PublicApi.Endpoint do
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
-    inc_error_callback: &Neurow.Stats.Security.inc_jwt_errors_public/0
+    inc_error_callback: &Neurow.Observability.SecurityStats.inc_jwt_errors_public/0
   )
 
   plug(:match)
   plug(:dispatch)
+
+  @manual_garbage_collection_interval_ms 60_000
 
   match _ do
     context_path = Neurow.Configuration.public_api_context_path()
@@ -72,7 +74,7 @@ defmodule Neurow.PublicApi.Endpoint do
             conn
             |> send_chunked(200)
             |> import_history(topic, last_event_id)
-            |> loop(timeout_ms, keep_alive_ms, now_ms, now_ms, exp, issuer)
+            |> loop(timeout_ms, keep_alive_ms, now_ms, now_ms, exp, issuer, 0)
         end
 
       _ ->
@@ -187,7 +189,16 @@ defmodule Neurow.PublicApi.Endpoint do
     {conn, sent}
   end
 
-  def loop(conn, sse_timeout_ms, keep_alive_ms, last_message_ms, last_ping_ms, jwt_exp_s, issuer) do
+  def loop(
+        conn,
+        sse_timeout_ms,
+        keep_alive_ms,
+        last_message_ms,
+        last_ping_ms,
+        jwt_exp_s,
+        issuer,
+        last_manual_garbage_collect_ms
+      ) do
     now_ms = :os.system_time(:millisecond)
 
     cond do
@@ -206,7 +217,8 @@ defmodule Neurow.PublicApi.Endpoint do
           last_message_ms,
           now_ms,
           jwt_exp_s,
-          issuer
+          issuer,
+          last_manual_garbage_collect_ms
         )
 
       # JWT token expired, send a credentials_expired event and stop the connection
@@ -225,13 +237,14 @@ defmodule Neurow.PublicApi.Endpoint do
             jwt_exp_s
           )
 
-        :erlang.garbage_collect()
+        last_manual_garbage_collect_ms =
+          manual_garbage_collect(now_ms, last_manual_garbage_collect_ms)
 
         receive do
           {:pubsub_message, message} ->
             conn = write_chunk(conn, message)
 
-            Neurow.Stats.MessageBroker.inc_message_sent(issuer)
+            Neurow.Observability.MessageBrokerStats.inc_message_sent(issuer)
             new_last_message_ms = :os.system_time(:millisecond)
 
             conn
@@ -241,7 +254,8 @@ defmodule Neurow.PublicApi.Endpoint do
               new_last_message_ms,
               new_last_message_ms,
               jwt_exp_s,
-              issuer
+              issuer,
+              last_manual_garbage_collect_ms
             )
 
           :shutdown ->
@@ -257,7 +271,8 @@ defmodule Neurow.PublicApi.Endpoint do
               last_message_ms,
               last_ping_ms,
               jwt_exp_s,
-              issuer
+              issuer,
+              last_manual_garbage_collect_ms
             )
         after
           next_tick_ms ->
@@ -268,7 +283,8 @@ defmodule Neurow.PublicApi.Endpoint do
               last_message_ms,
               last_ping_ms,
               jwt_exp_s,
-              issuer
+              issuer,
+              last_manual_garbage_collect_ms
             )
         end
     end
@@ -298,6 +314,22 @@ defmodule Neurow.PublicApi.Endpoint do
     # The Erlang process scheduler does not guarantee the `after` block will be executed with a ms precision,
     # So a small tolerance is added, also a minimum of 100ms is set to avoid busy waiting
     max(Enum.min([next_ping_ms, timeout_ms, jwt_exp_ms]) + 20, 100)
+  end
+
+  defp manual_garbage_collect(now_ms, last_manual_garbage_collect_ms) do
+    if now_ms - last_manual_garbage_collect_ms > @manual_garbage_collection_interval_ms do
+      before_ts = :os.system_time(:native)
+      :erlang.garbage_collect()
+      after_ts = :os.system_time(:native)
+
+      duration_microsecond =
+        System.convert_time_unit(after_ts - before_ts, :native, :microsecond)
+
+      Logger.info("Manual garbage collection performed in #{duration_microsecond} microseconds")
+      now_ms
+    else
+      last_manual_garbage_collect_ms
+    end
   end
 
   defp write_chunk(conn, message) when is_struct(message, Neurow.Broker.Message) do
