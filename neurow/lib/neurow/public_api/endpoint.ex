@@ -325,7 +325,7 @@ defmodule Neurow.PublicApi.Endpoint do
       duration_microsecond =
         System.convert_time_unit(after_ts - before_ts, :native, :microsecond)
 
-      Logger.info("Manual garbage collection performed in #{duration_microsecond} microseconds")
+      Logger.debug("Manual garbage collection performed in #{duration_microsecond} microseconds")
       now_ms
     else
       last_manual_garbage_collect_ms
