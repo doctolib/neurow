@@ -35,39 +35,32 @@ defmodule Neurow.Observability.SystemStats do
     ]
   end
 
-  # Group process by name or initial function, and current function
-  # Then sort by memory usage and return the top consuming processes groups
+  # Group process by name or initial function, and current function.
+  # Then sort by memory usage and return the top consuming processe groups
   def process_groups(result_count \\ 50) do
     Process.list()
     |> Enum.reduce(%{}, fn pid, acc ->
       {name_or_initial_func, current_func} = grouping_attributes(pid)
 
-      process_info =
-        Process.info(pid, [
-          :memory,
-          :message_queue_len
-        ])
+      Map.update(
+        acc,
+        {name_or_initial_func, current_func},
+        %ProcessesStats{
+          name_or_initial_func: name_or_initial_func,
+          current_func: current_func
+        },
+        fn current_stats ->
+          process_info = Process.info(pid, [:memory, :message_queue_len])
 
-      current_stats =
-        acc[{name_or_initial_func, current_func}] ||
-          %ProcessesStats{
-            name_or_initial_func: name_or_initial_func,
-            current_func: current_func
+          %{
+            current_stats
+            | process_count: current_stats.process_count + 1,
+              memory: current_stats.memory + (process_info[:memory] || 0),
+              message_queue_len:
+                current_stats.message_queue_len + (process_info[:message_queue_len] || 0)
           }
-
-      process_count = current_stats.process_count + 1
-      memory = current_stats.memory + (process_info[:memory] || 0)
-
-      message_queue_len =
-        current_stats.message_queue_len + (process_info[:message_queue_len] || 0)
-
-      Map.put(acc, {name_or_initial_func, current_func}, %ProcessesStats{
-        name_or_initial_func: name_or_initial_func,
-        process_count: process_count,
-        current_func: current_func,
-        memory: memory,
-        message_queue_len: message_queue_len
-      })
+        end
+      )
     end)
     |> Map.values()
     |> Enum.sort(&(&1.memory > &2.memory))
