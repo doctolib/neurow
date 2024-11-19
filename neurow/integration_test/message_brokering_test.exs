@@ -23,7 +23,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       # Nested loop on all public ports and internal ports to ensure that messages
       # can be forwarded from all nodes to all nodes in the cluster
       Enum.each(public_ports, fn public_port ->
-        subscribe(public_port, "test_topic", fn ->
+        subscribe_async(public_port, "test_topic", fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200},
                          1_000,
                          "HTTP 200 on public port #{public_port}"
@@ -74,7 +74,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
         Enum.flat_map(public_ports, fn public_port ->
           Enum.map(1..3, fn _index ->
             Task.async(fn ->
-              subscribe(public_port, "test_topic", fn ->
+              subscribe_async(public_port, "test_topic", fn ->
                 assert_receive %HTTPoison.AsyncStatus{code: 200},
                                1_000,
                                "HTTP 200 on public port #{public_port}"
@@ -128,7 +128,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       subscribe_tasks =
         Enum.map(public_ports, fn public_port ->
           Task.async(fn ->
-            subscribe(public_port, "test_topic:#{public_port}", fn ->
+            subscribe_async(public_port, "test_topic:#{public_port}", fn ->
               assert_receive %HTTPoison.AsyncStatus{code: 200},
                              1_000,
                              "HTTP 200 on public port #{public_port}"
@@ -173,7 +173,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
     } do
       subscribe_task =
         Task.async(fn ->
-          subscribe(first_public_port, "test_topic", fn ->
+          subscribe_async(first_public_port, "test_topic", fn ->
             assert_receive %HTTPoison.AsyncStatus{code: 200},
                            1_000,
                            "HTTP 200 on public port #{first_public_port}"
@@ -238,7 +238,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       subscribe_tasks =
         Enum.map(public_ports, fn public_port ->
           Task.async(fn ->
-            subscribe(public_port, "test_topic:#{public_port}", fn ->
+            subscribe_async(public_port, "test_topic:#{public_port}", fn ->
               assert_receive %HTTPoison.AsyncStatus{code: 200},
                              1_000,
                              "HTTP 200 on public port #{public_port}"

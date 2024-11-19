@@ -19,7 +19,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(first_public_port, "test_topic", fn ->
+      subscribe_async(first_public_port, "test_topic", fn ->
         assert_receive %HTTPoison.AsyncStatus{code: 200}
         assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
@@ -48,7 +48,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
     } do
       override_keepalive(100)
 
-      subscribe(
+      subscribe_async(
         first_public_port,
         "test_topic",
         fn ->
@@ -91,7 +91,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
            public_api_port: public_api_port
          } do
       Task.async(fn ->
-        subscribe(public_api_port, "test_topic", fn ->
+        subscribe_async(public_api_port, "test_topic", fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 200}
           assert_receive %HTTPoison.AsyncHeaders{}
 
@@ -115,7 +115,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
     } do
       fake_cookie = String.duplicate("a", 8_000)
 
-      subscribe(
+      subscribe_async(
         first_public_port,
         "test_topic",
         fn ->

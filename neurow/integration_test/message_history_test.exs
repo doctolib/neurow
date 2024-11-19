@@ -40,7 +40,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(first_public_port, "test_topic", fn ->
+      subscribe_async(first_public_port, "test_topic", fn ->
         assert_receive %HTTPoison.AsyncStatus{code: 200}
         assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
@@ -61,20 +61,26 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(
+      subscribe_sync(
         first_public_port,
         "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 400}
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+        fn response ->
+          assert response.status_code == 400
 
-          assert_headers(headers, [
+          assert_headers(response.headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
-            {"content-type", "text/event-stream"},
+            {"content-type", "text/event-stream"}
           ])
 
+          parsed_body = :jiffy.decode(response.body, [:return_maps])
+
+          assert parsed_body["errors"] |> List.first() ==
+                   %{
+                     "error_code" => "invalid_last_event_id",
+                     "error_message" => "Wrong value for last-event-id"
+                   }
         end,
         "last-event-id": "foo"
       )
@@ -85,7 +91,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(
+      subscribe_async(
         first_public_port,
         "empty_topic",
         fn ->
@@ -112,7 +118,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(
+      subscribe_async(
         first_public_port,
         "test_topic",
         fn ->
@@ -144,7 +150,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(
+      subscribe_async(
         first_public_port,
         "test_topic",
         fn ->
@@ -301,7 +307,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       }
     } do
       Enum.each(public_ports, fn public_ports ->
-        subscribe(
+        subscribe_async(
           public_ports,
           "test_topic",
           fn ->
