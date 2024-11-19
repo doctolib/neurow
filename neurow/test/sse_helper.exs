@@ -58,6 +58,12 @@ defmodule SseHelper do
         send(state[:owner], {:chunk, body})
         Plug.Adapters.Test.Conn.chunk(state, body)
       end
+
+      def send_resp(state, status, headers, body) do
+        send(state[:owner], {:send_resp_status, status})
+        send(state[:owner], {:send_resp_body, body})
+        Plug.Adapters.Test.Conn.send_resp(state, status, headers, body)
+      end
     end
 
     @doc """
