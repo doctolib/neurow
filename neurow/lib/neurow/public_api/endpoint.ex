@@ -61,7 +61,7 @@ defmodule Neurow.PublicApi.Endpoint do
           :error ->
             conn
             |> send_http_error(
-              :bad_request,
+              400,
               :invalid_last_event_id,
               "Wrong value for last-event-id"
             )
@@ -83,7 +83,7 @@ defmodule Neurow.PublicApi.Endpoint do
   end
 
   def send_forbidden(conn, error_code, error_message) do
-    send_http_error(conn, :forbidden, error_code, error_message)
+    send_http_error(conn, 403, error_code, error_message)
   end
 
   def preflight_request(conn, _opts) do
@@ -133,16 +133,13 @@ defmodule Neurow.PublicApi.Endpoint do
 
     now = :os.system_time(:seconds)
 
-    {:ok, conn} =
-      conn
-      |> put_resp_header("content-type", "text/event-stream")
-      |> put_resp_header("access-control-allow-origin", origin)
-      |> put_resp_header("cache-control", "no-cache")
-      |> put_resp_header("connection", "close")
-      |> send_chunked(http_status)
-      |> chunk("id:#{now}\nevent: neurow_error_#{http_status}\ndata: #{response}\n\n")
-
     conn
+    |> put_resp_header("content-type", "text/event-stream")
+    |> put_resp_header("access-control-allow-origin", origin)
+    |> send_resp(
+      http_status,
+      "id:#{now}\nevent: neurow_error_#{http_status}\ndata: #{response}\n\n"
+    )
   end
 
   defp extract_last_event_id(conn) do

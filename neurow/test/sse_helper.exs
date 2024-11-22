@@ -58,12 +58,18 @@ defmodule SseHelper do
         send(state[:owner], {:chunk, body})
         Plug.Adapters.Test.Conn.chunk(state, body)
       end
+
+      def send_resp(state, status, headers, body) do
+        send(state[:owner], {:send_resp_status, status})
+        send(state[:owner], {:send_resp_body, body})
+        Plug.Adapters.Test.Conn.send_resp(state, status, headers, body)
+      end
     end
 
     @doc """
     Tests interaction with a SSE request by:
      - Calling the plug endpoint in a children task,
-     - Intercepts calls to `send_chunk` and `chunk` from the application plugs to send messages to the test process
+     - Intercepts calls to `send_chunk`, `chunk` and `send_resp` from the application plugs to send messages to the test process
     """
     def call(plug_endpoint, conn, assertion_fn, options \\ []) do
       instrumented_conn = conn |> instrument()

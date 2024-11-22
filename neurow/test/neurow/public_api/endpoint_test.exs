@@ -12,21 +12,22 @@ defmodule Neurow.PublicApi.EndpointTest do
         conn(:get, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_chunked, 403}
-        assert_receive {:chunk, body}
+        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_body, body}
 
-        sse_event = parse_sse_json_event(body)
+        json_event = parse_sse_json_event(body)
 
-        assert sse_event.event == "neurow_error_forbidden"
+        assert json_event.event == "neurow_error_403"
 
-        assert sse_event.data == %{
-                 "errors" => [
-                   %{
-                     "error_code" => "invalid_authorization_header",
-                     "error_message" => "Invalid authorization header"
-                   }
-                 ]
-               }
+        assert json_event.data ==
+                 %{
+                   "errors" => [
+                     %{
+                       "error_code" => "invalid_authorization_header",
+                       "error_message" => "Invalid authorization header"
+                     }
+                   ]
+                 }
       end)
     end
 
@@ -36,13 +37,14 @@ defmodule Neurow.PublicApi.EndpointTest do
         |> put_req_header("authorization", "Bearer bad_token")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_chunked, 403}
-        assert_receive {:chunk, body}
-        event = parse_sse_json_event(body)
+        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_body, body}
 
-        assert event.event == "neurow_error_forbidden"
+        json_event = parse_sse_json_event(body)
 
-        assert event.data == %{
+        assert json_event.event == "neurow_error_403"
+
+        assert json_event.data == %{
                  "errors" => [
                    %{
                      "error_code" => "invalid_jwt_token",
@@ -122,13 +124,14 @@ defmodule Neurow.PublicApi.EndpointTest do
         )
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_chunked, 400}
-        assert_receive {:chunk, body}
-        event = parse_sse_json_event(body)
+        assert_receive {:send_resp_status, 400}
+        assert_receive {:send_resp_body, body}
 
-        assert event.event == "neurow_error_bad_request"
+        json_event = parse_sse_json_event(body)
 
-        assert event.data == %{
+        assert json_event.event == "neurow_error_400"
+
+        assert json_event.data == %{
                  "errors" => [
                    %{
                      "error_code" => "invalid_last_event_id",
@@ -466,12 +469,22 @@ defmodule Neurow.PublicApi.EndpointTest do
         conn(:get, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_chunked, 403}
-        assert_receive {:chunk, body}
+        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_body, body}
 
-        sse_event = parse_sse_event(body)
+        json_event = parse_sse_json_event(body)
 
-        assert sse_event.event == "neurow_error_forbidden"
+        assert json_event.event == "neurow_error_403"
+
+        assert json_event.data ==
+                 %{
+                   "errors" => [
+                     %{
+                       "error_code" => "invalid_authorization_header",
+                       "error_message" => "Invalid authorization header"
+                     }
+                   ]
+                 }
       end)
     end
 

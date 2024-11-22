@@ -73,23 +73,23 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             {"cache-control", "no-cache"},
             {"connection", "close"},
             {"content-type", "text/event-stream"},
-            {"transfer-encoding", "chunked"}
           ])
 
-          assert_receive %HTTPoison.AsyncChunk{chunk: error_sse_event}
+          assert_receive %HTTPoison.AsyncChunk{chunk: body}
 
-          json_event = parse_sse_json_event(error_sse_event)
+          json_event = parse_sse_json_event(body)
 
-          assert json_event.event == "neurow_error_bad_request"
+          assert json_event.event == "neurow_error_400"
 
-          assert json_event.data == %{
-                   "errors" => [
-                     %{
-                       "error_code" => "invalid_last_event_id",
-                       "error_message" => "Wrong value for last-event-id"
-                     }
-                   ]
-                 }
+          assert json_event.data ==
+                   %{
+                     "errors" => [
+                       %{
+                         "error_code" => "invalid_last_event_id",
+                         "error_message" => "Wrong value for last-event-id"
+                       }
+                     ]
+                   }
 
           assert_receive %HTTPoison.AsyncEnd{}
         end,
