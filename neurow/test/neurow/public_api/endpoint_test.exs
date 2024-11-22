@@ -15,12 +15,18 @@ defmodule Neurow.PublicApi.EndpointTest do
         assert_receive {:send_resp_status, 403}
         assert_receive {:send_resp_body, body}
 
-        parsed_body = :jiffy.decode(body, [:return_maps])
+        json_event = parse_sse_json_event(body)
 
-        assert parsed_body["errors"] |> List.first() ==
+        assert json_event.event == "neurow_error_403"
+
+        assert json_event.data ==
                  %{
-                   "error_code" => "invalid_authorization_header",
-                   "error_message" => "Invalid authorization header"
+                   "errors" => [
+                     %{
+                       "error_code" => "invalid_authorization_header",
+                       "error_message" => "Invalid authorization header"
+                     }
+                   ]
                  }
       end)
     end
@@ -34,13 +40,18 @@ defmodule Neurow.PublicApi.EndpointTest do
         assert_receive {:send_resp_status, 403}
         assert_receive {:send_resp_body, body}
 
-        parsed_body = :jiffy.decode(body, [:return_maps])
+        json_event = parse_sse_json_event(body)
 
-        assert parsed_body["errors"] |> List.first() ==
-                 %{
-                   "error_code" => "invalid_jwt_token",
-                   "error_message" => "Invalid JWT token"
-                 }
+        assert json_event.event == "neurow_error_403"
+
+        assert json_event.data == %{
+                 "errors" => [
+                   %{
+                     "error_code" => "invalid_jwt_token",
+                     "error_message" => "Invalid JWT token"
+                   }
+                 ]
+               }
       end)
     end
 
@@ -116,13 +127,18 @@ defmodule Neurow.PublicApi.EndpointTest do
         assert_receive {:send_resp_status, 400}
         assert_receive {:send_resp_body, body}
 
-        parsed_body = :jiffy.decode(body, [:return_maps])
+        json_event = parse_sse_json_event(body)
 
-        assert parsed_body["errors"] |> List.first() ==
-                 %{
-                   "error_code" => "invalid_last_event_id",
-                   "error_message" => "Wrong value for last-event-id"
-                 }
+        assert json_event.event == "neurow_error_400"
+
+        assert json_event.data == %{
+                 "errors" => [
+                   %{
+                     "error_code" => "invalid_last_event_id",
+                     "error_message" => "Wrong value for last-event-id"
+                   }
+                 ]
+               }
 
         assert_receive {:DOWN, _reference, :process, _pid, :normal}, 2_000
       end)
@@ -456,12 +472,18 @@ defmodule Neurow.PublicApi.EndpointTest do
         assert_receive {:send_resp_status, 403}
         assert_receive {:send_resp_body, body}
 
-        parsed_body = :jiffy.decode(body, [:return_maps])
+        json_event = parse_sse_json_event(body)
 
-        assert parsed_body["errors"] |> List.first() ==
+        assert json_event.event == "neurow_error_403"
+
+        assert json_event.data ==
                  %{
-                   "error_code" => "invalid_authorization_header",
-                   "error_message" => "Invalid authorization header"
+                   "errors" => [
+                     %{
+                       "error_code" => "invalid_authorization_header",
+                       "error_message" => "Invalid authorization header"
+                     }
+                   ]
                  }
       end)
     end

@@ -132,6 +132,7 @@ defmodule Neurow.PublicApi.Endpoint do
       })
 
     now = :os.system_time(:seconds)
+
     conn
     |> put_resp_header("content-type", "text/event-stream")
     |> put_resp_header("access-control-allow-origin", origin)

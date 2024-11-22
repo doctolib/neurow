@@ -74,13 +74,20 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             {"content-type", "text/event-stream"}
           ])
 
-          parsed_body = :jiffy.decode(response.body, [:return_maps])
+          json_event = parse_sse_json_event(response.body)
 
-          assert parsed_body["errors"] |> List.first() ==
+          assert json_event.event == "neurow_error_400"
+
+          assert json_event.data ==
                    %{
-                     "error_code" => "invalid_last_event_id",
-                     "error_message" => "Wrong value for last-event-id"
+                     "errors" => [
+                       %{
+                         "error_code" => "invalid_last_event_id",
+                         "error_message" => "Wrong value for last-event-id"
+                       }
+                     ]
                    }
+
         end,
         "last-event-id": "foo"
       )
