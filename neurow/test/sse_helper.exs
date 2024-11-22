@@ -69,7 +69,7 @@ defmodule SseHelper do
     @doc """
     Tests interaction with a SSE request by:
      - Calling the plug endpoint in a children task,
-     - Intercepts calls to `send_chunk` and `chunk` from the application plugs to send messages to the test process
+     - Intercepts calls to `send_chunk`, `chunk` and `send_resp` from the application plugs to send messages to the test process
     """
     def call(plug_endpoint, conn, assertion_fn, options \\ []) do
       instrumented_conn = conn |> instrument()
