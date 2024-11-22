@@ -40,7 +40,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe_async(first_public_port, "test_topic", fn ->
+      subscribe(first_public_port, "test_topic", fn ->
         assert_receive %HTTPoison.AsyncStatus{code: 200}
         assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
@@ -61,20 +61,24 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe_sync(
+      subscribe(
         first_public_port,
         "test_topic",
-        fn response ->
-          assert response.status_code == 400
+        fn ->
+          assert_receive %HTTPoison.AsyncStatus{code: 400}
 
-          assert_headers(response.headers, [
+          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+
+          assert_headers(headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache"},
             {"connection", "close"},
-            {"content-type", "text/event-stream"}
+            {"content-type", "text/event-stream"},
           ])
 
-          json_event = parse_sse_json_event(response.body)
+          assert_receive %HTTPoison.AsyncChunk{chunk: body}, 4_200
+
+          json_event = parse_sse_json_event(body)
 
           assert json_event.event == "neurow_error_400"
 
@@ -88,6 +92,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
                      ]
                    }
 
+          assert_receive %HTTPoison.AsyncEnd{}
         end,
         "last-event-id": "foo"
       )
@@ -98,7 +103,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe_async(
+      subscribe(
         first_public_port,
         "empty_topic",
         fn ->
@@ -125,7 +130,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe_async(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
@@ -157,7 +162,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe_async(
+      subscribe(
         first_public_port,
         "test_topic",
         fn ->
@@ -314,7 +319,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       }
     } do
       Enum.each(public_ports, fn public_ports ->
-        subscribe_async(
+        subscribe(
           public_ports,
           "test_topic",
           fn ->

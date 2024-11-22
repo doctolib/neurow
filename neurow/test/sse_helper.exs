@@ -116,16 +116,7 @@ defmodule SseHelper do
       HTTPoison.start()
     end
 
-    def subscribe_sync(port, topic, assert_fn, extra_headers \\ []) do
-      headers =
-        [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"] ++
-          extra_headers
-
-      response = HTTPoison.get!(subscribe_url(port), headers)
-      assert_fn.(response)
-    end
-
-    def subscribe_async(port, topic, assert_fn, extra_headers \\ []) do
+    def subscribe(port, topic, assert_fn, extra_headers \\ []) do
       headers =
         [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"] ++
           extra_headers
