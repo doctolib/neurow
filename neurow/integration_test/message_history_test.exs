@@ -66,7 +66,6 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         "test_topic",
         fn ->
           assert_receive %HTTPoison.AsyncStatus{code: 400}
-
           assert_receive %HTTPoison.AsyncHeaders{headers: headers}
 
           assert_headers(headers, [
@@ -76,7 +75,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
             {"content-type", "text/event-stream"},
           ])
 
-          assert_receive %HTTPoison.AsyncChunk{chunk: body}, 4_200
+          assert_receive %HTTPoison.AsyncChunk{chunk: body}
 
           json_event = parse_sse_json_event(body)
 
