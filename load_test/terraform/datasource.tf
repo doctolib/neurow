@@ -1,11 +1,11 @@
 data "aws_ami" "ami-x86" {
   filter {
     name   = "name"
-    values = ["amzn2-ami-kernel-*-hvm-*x86*"]
+    values = ["*/ubuntu-noble-24.04-amd64-server*"]
   }
 
   most_recent = true
-  owners      = ["137112412989"]
+  owners      = ["099720109477"]
 }
 
 data "aws_subnet" "first_public" {

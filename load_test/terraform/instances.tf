@@ -2,19 +2,16 @@ locals {
   user_data = <<-EOF
 #!/bin/bash -e
 
-yum install -y ncurses-compat-libs git jq htop gcc gcc-c++
-wget https://binaries2.erlang-solutions.com/centos/7/esl-erlang_26.2.1_1~centos~7_x86_64.rpm -O /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
-rpm -ivh /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
+add-apt-repository ppa:rabbitmq/rabbitmq-erlang -y
+apt update
+apt install elixir erlang-dev erlang-xmerl gcc g++ unzip -y
 
-wget https://github.com/elixir-lang/elixir/releases/download/v1.17.2/elixir-otp-26.zip -O /tmp/elixir-otp-26.zip
-mkdir /opt/elixir
-cd /opt/elixir
-unzip /tmp/elixir-otp-26.zip
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
 
-export PATH=/opt/elixir/bin:$PATH
 export ELIXIR_ERL_OPTIONS="+fnu"
 export HOME=/opt/home
-
 mkdir $HOME
 
 cd /opt
