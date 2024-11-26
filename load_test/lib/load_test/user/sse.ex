@@ -98,6 +98,7 @@ defmodule SseUser do
             Logger.debug(fn ->
               "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}, remote server: #{server}"
             end)
+
           _ ->
             Logger.debug(fn ->
               "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}, unknown remote server"
