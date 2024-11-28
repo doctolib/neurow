@@ -75,8 +75,9 @@ defmodule LoadTest.Main do
       number_of_messages_max: number_of_messages_max
     }
 
-    Logger.warning("SSE BASE URL: #{sse_url}")
-    Logger.warning("PUBLISH BASE URL: #{publish_url}")
+    Logger.warning("SSE base url: #{sse_url}")
+    Logger.warning("Publish base url: #{publish_url}")
+    Logger.warning("User agent: #{sse_user_agent}")
     Logger.warning("Starting load test with #{nb_user} users")
 
     Enum.map(1..nb_user, fn _ ->

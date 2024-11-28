@@ -93,17 +93,9 @@ defmodule SseUser do
         end
 
       {:http, {_, :stream_start, headers}} ->
-        case List.keyfind(headers, ~c"x-sse-server", 0) do
-          {~c"x-sse-server", server} ->
-            Logger.debug(fn ->
-              "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}, remote server: #{server}"
-            end)
-
-          _ ->
-            Logger.debug(fn ->
-              "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}, unknown remote server"
-            end)
-        end
+        Logger.debug(fn ->
+          "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
+        end)
 
         state.start_publisher_callback.()
 

@@ -12,7 +12,8 @@ defmodule LoadTest.User.Publisher do
       :publish_jwt_audience,
       :delay_between_messages_min,
       :delay_between_messages_max,
-      :start_time
+      :start_time,
+      :message_count,
     ]
   end
 
@@ -35,7 +36,8 @@ defmodule LoadTest.User.Publisher do
       publish_jwt_audience: context.publish_jwt_audience,
       delay_between_messages_min: context.delay_between_messages_min,
       delay_between_messages_max: context.delay_between_messages_max,
-      start_time: start_time
+      start_time: start_time,
+      message_count: length(messages),
     }
 
     Logger.debug(fn ->
@@ -73,7 +75,7 @@ defmodule LoadTest.User.Publisher do
     duration = :os.system_time(:millisecond) - state.start_time
 
     Logger.info(fn ->
-      "publisher_#{state.user_name}: All messages published to #{state.publish_url}, duration: #{duration / 1000}"
+      "publisher_#{state.user_name}: All messages published (#{state.message_count}) to #{state.publish_url}, duration: #{duration / 1000}"
     end)
   end
 

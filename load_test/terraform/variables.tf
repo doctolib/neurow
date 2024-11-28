@@ -41,9 +41,8 @@ variable "nb_users" {
   default = 20000
 }
 
-variable "neurow_revision" {
+variable "neurow_load_test_image" {
   type    = string
-  default = "main"
 }
 
 variable "neurow_config" {
