@@ -13,7 +13,7 @@ defmodule LoadTest.User.Publisher do
       :delay_between_messages_min,
       :delay_between_messages_max,
       :start_time,
-      :message_count,
+      :message_count
     ]
   end
 
@@ -37,7 +37,7 @@ defmodule LoadTest.User.Publisher do
       delay_between_messages_min: context.delay_between_messages_min,
       delay_between_messages_max: context.delay_between_messages_max,
       start_time: start_time,
-      message_count: length(messages),
+      message_count: length(messages)
     }
 
     Logger.debug(fn ->

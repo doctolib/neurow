@@ -48,12 +48,17 @@ defmodule SseUser do
     headers = build_headers(context, topic)
 
     parsed_url = URI.parse(url)
+
     opts = %{
-      tls_opts: [{:customize_hostname_check, [{:match_fun, :public_key.pkix_verify_hostname_match_fun(:https)}]}],
+      tls_opts: [
+        {:customize_hostname_check,
+         [{:match_fun, :public_key.pkix_verify_hostname_match_fun(:https)}]}
+      ],
       http_opts: %{
-        closing_timeout: context.sse_timeout + 1000,
-      },
+        closing_timeout: context.sse_timeout + 1000
+      }
     }
+
     {:ok, conn_pid} = :gun.open(String.to_atom(parsed_url.host), parsed_url.port, opts)
     {:ok, proto} = :gun.await_up(conn_pid)
     Logger.debug(fn -> "Connection established with proto #{inspect(proto)}" end)
@@ -81,7 +86,10 @@ defmodule SseUser do
 
     case result do
       {:response, _, code, _} when code == 200 ->
-        Logger.debug("#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}")
+        Logger.debug(
+          "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
+        )
+
         state.start_publisher_callback.()
         wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages])
 
@@ -111,7 +119,6 @@ defmodule SseUser do
         Logger.error("#{header(state)} Unexpected message #{inspect(msg)}")
         :ok = :gun.close(conn_pid)
         raise("#{header(state)} Unexpected message")
-
     end
   end
 
