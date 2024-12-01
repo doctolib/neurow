@@ -23,7 +23,7 @@ defmodule LoadTest.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :inets],
+      extra_applications: [:logger, :inets, :gun],
       mod: {LoadTest.Application, []}
     ]
   end
@@ -38,7 +38,8 @@ defmodule LoadTest.MixProject do
       {:finch, "~> 0.18"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 1.1"},
-      {:observer_cli, "~> 1.7"}
+      {:observer_cli, "~> 1.7"},
+      {:gun, "~> 2.1"},
     ]
   end
 end

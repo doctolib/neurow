@@ -46,10 +46,15 @@ defmodule SseUser do
     end)
 
     headers = build_headers(context, topic)
-    http_request_opts = []
 
-    {:ok, request_id} =
-      :httpc.request(:get, {url, headers}, http_request_opts, [{:sync, false}, {:stream, :self}])
+    parsed_url = URI.parse(url)
+    opts = %{
+      tls_opts: [{:customize_hostname_check, [{:match_fun, :public_key.pkix_verify_hostname_match_fun(:https)}]}],
+    }
+    {:ok, conn_pid} = :gun.open(String.to_atom(parsed_url.host), parsed_url.port, opts)
+    {:ok, proto} = :gun.await_up(conn_pid)
+    Logger.debug(fn -> "Connection established with proto #{inspect(proto)}" end)
+    stream_ref = :gun.get(conn_pid, parsed_url.path, headers)
 
     state = %SseState{
       user_name: user_name,
@@ -63,63 +68,101 @@ defmodule SseUser do
       end
     }
 
-    wait_for_messages(state, request_id, expected_messages)
+    wait_for_messages(state, conn_pid, stream_ref, expected_messages)
   end
 
-  defp wait_for_messages(state, request_id, [first_message | remaining_messages]) do
+  defp wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages]) do
     Logger.debug(fn -> "#{header(state)} Waiting for message: #{first_message}" end)
 
-    receive do
-      {:http, {_, {:error, msg}}} ->
-        Logger.error("#{header(state)} Http error: #{inspect(msg)}")
-        :ok = :httpc.cancel_request(request_id)
-        Stats.inc_msg_received_http_error()
-        raise("#{header(state)} Http error")
+    result = :gun.await(conn_pid, stream_ref, state.sse_timeout)
 
-      {:http, {_, :stream, msg}} ->
+    case result do
+      {:response, _, code, _} when code == 200 ->
+        Logger.debug("#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}")
+        state.start_publisher_callback.()
+        wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages])
+
+      {:response, _, code, _} ->
+        Logger.error("#{header(state)} Error: #{inspect(code)}")
+        :ok = :gun.close(conn_pid)
+        Stats.inc_msg_received_http_error()
+        raise("#{header(state)} Error")
+
+      {:data, _, msg} ->
         msg = String.trim(msg)
         Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
 
         if msg =~ "event: ping" do
-          wait_for_messages(state, request_id, [first_message | remaining_messages])
+          wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages])
         else
           if check_message(state, msg, first_message) == :error do
-            :ok = :httpc.cancel_request(request_id)
+            :ok = :gun.close(conn_pid)
             raise("#{header(state)} Message check error")
           end
 
           state = Map.put(state, :current_message, state.current_message + 1)
-          wait_for_messages(state, request_id, remaining_messages)
+          wait_for_messages(state, conn_pid, stream_ref, remaining_messages)
         end
-
-      {:http, {_, :stream_start, headers}} ->
-        Logger.debug(fn ->
-          "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
-        end)
-
-        state.start_publisher_callback.()
-
-        wait_for_messages(state, request_id, [first_message | remaining_messages])
 
       msg ->
         Logger.error("#{header(state)} Unexpected message #{inspect(msg)}")
-        :ok = :httpc.cancel_request(request_id)
+        :ok = :gun.close(conn_pid)
         raise("#{header(state)} Unexpected message")
-    after
-      state.sse_timeout ->
-        Logger.error(
-          "#{header(state)} Timeout waiting for message (timeout=#{state.sse_timeout}ms), remaining: #{length(remaining_messages) + 1} messages, url #{state.url}"
-        )
 
-        Stats.inc_msg_received_timeout()
-
-        :ok = :httpc.cancel_request(request_id)
-        raise("#{header(state)} Timeout waiting for message")
     end
+    # case result do
+
+    # receive do
+    #   {:http, {_, {:error, msg}}} ->
+    #     Logger.error("#{header(state)} Http error: #{inspect(msg)}")
+    #     :ok = :httpc.cancel_request(request_id)
+    #     Stats.inc_msg_received_http_error()
+    #     raise("#{header(state)} Http error")
+
+    #   {:http, {_, :stream, msg}} ->
+    #     msg = String.trim(msg)
+    #     Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
+
+    #     if msg =~ "event: ping" do
+    #       wait_for_messages(state, request_id, [first_message | remaining_messages])
+    #     else
+    #       if check_message(state, msg, first_message) == :error do
+    #         :ok = :httpc.cancel_request(request_id)
+    #         raise("#{header(state)} Message check error")
+    #       end
+
+    #       state = Map.put(state, :current_message, state.current_message + 1)
+    #       wait_for_messages(state, request_id, remaining_messages)
+    #     end
+
+    #   {:http, {_, :stream_start, headers}} ->
+    #     Logger.debug(fn ->
+    #       "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
+    #     end)
+
+    #     state.start_publisher_callback.()
+
+    #     wait_for_messages(state, request_id, [first_message | remaining_messages])
+
+    #   msg ->
+    #     Logger.error("#{header(state)} Unexpected message #{inspect(msg)}")
+    #     :ok = :httpc.cancel_request(request_id)
+    #     raise("#{header(state)} Unexpected message")
+    # after
+    #   state.sse_timeout ->
+    #     Logger.error(
+    #       "#{header(state)} Timeout waiting for message (timeout=#{state.sse_timeout}ms), remaining: #{length(remaining_messages) + 1} messages, url #{state.url}"
+    #     )
+
+    #     Stats.inc_msg_received_timeout()
+
+    #     :ok = :httpc.cancel_request(request_id)
+    #     raise("#{header(state)} Timeout waiting for message")
+    # end
   end
 
-  defp wait_for_messages(state, request_id, []) do
-    :ok = :httpc.cancel_request(request_id)
+  defp wait_for_messages(state, conn_pid, _, []) do
+    :ok = :gun.close(conn_pid)
     Logger.info("#{header(state)} All messages received, url #{state.url}")
   end
 
