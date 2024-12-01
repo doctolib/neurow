@@ -23,7 +23,7 @@ end
 config :neurow,
   public_api_port: String.to_integer(System.get_env("PUBLIC_API_PORT") || "4000"),
   public_api_jwt_max_lifetime:
-    String.to_integer(System.get_env("PUBLIC_API_JWT_MAX_LIFETIME") || "120"),
+    String.to_integer(System.get_env("PUBLIC_API_JWT_MAX_LIFETIME") || "86400"),
   public_api_allowed_origins: [~r/^https:\/\/.*\.doctolib\.(fr|it|de)(:3000)?$/],
   public_api_preflight_max_age: String.to_integer(System.get_env("PREFLIGHT_MAX_AGE") || "86400"),
   public_api_context_path: System.get_env("PUBLIC_API_CONTEXT_PATH") || "",
