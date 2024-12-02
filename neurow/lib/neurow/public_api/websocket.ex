@@ -38,6 +38,7 @@ defmodule Neurow.PublicApi.Websocket do
     state = Map.put(state, :jwt_exp_s, payload["exp"])
     state = Map.put(state, :issuer, issuer)
     Neurow.Observability.MessageBrokerStats.inc_subscriptions(issuer)
+    Process.send_after(self(), :loop, @loop_duration)
     {:ok, state}
   end
 
@@ -47,7 +48,6 @@ defmodule Neurow.PublicApi.Websocket do
         authenticate(jwt_token, state)
 
       _ ->
-        nil
         Logger.debug("No JWT token found in the headers")
         Process.send_after(self(), :loop, @loop_duration)
         {:ok, state}
