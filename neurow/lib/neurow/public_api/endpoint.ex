@@ -220,6 +220,7 @@ defmodule Neurow.PublicApi.Endpoint do
 
       # JWT token expired, send a credentials_expired event and stop the connection
       jwt_expired?(now_ms, jwt_exp_s) ->
+        Logger.info("Client disconnected due to credentials expired")
         conn |> write_chunk("event: credentials_expired")
 
       # Otherwise, let's wait for a message or the next tick

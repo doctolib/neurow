@@ -2,41 +2,41 @@ locals {
   user_data = <<-EOF
 #!/bin/bash -e
 
-yum install -y ncurses-compat-libs git jq htop gcc gcc-c++
-wget https://binaries2.erlang-solutions.com/centos/7/esl-erlang_26.2.1_1~centos~7_x86_64.rpm -O /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
-rpm -ivh /tmp/esl-erlang_26.2.1_1~centos~7_x86_64.rpm
+apt update
+apt install docker.io unzip -y
 
-wget https://github.com/elixir-lang/elixir/releases/download/v1.17.2/elixir-otp-26.zip -O /tmp/elixir-otp-26.zip
-mkdir /opt/elixir
-cd /opt/elixir
-unzip /tmp/elixir-otp-26.zip
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
 
-export PATH=/opt/elixir/bin:$PATH
 export ELIXIR_ERL_OPTIONS="+fnu"
-export HOME=/opt/home
-
-mkdir $HOME
-
-cd /opt
-git clone https://github.com/doctolib/neurow.git
-cd neurow
-git checkout ${var.neurow_revision}
-cd load_test
-
-mix local.hex --force
-mix deps.get
-
-MIX_ENV=prod mix release
-
-ulimit -n 1000000
+export NB_USER=${var.nb_users}
 
 ${var.neurow_config}
 
-export NB_USER=${var.nb_users}
-export RELEASE_TMP=/tmp/
-export RUN_ERL_LOG_MAXSIZE=1000000000
-
-_build/prod/rel/load_test/bin/load_test daemon
+docker run --rm -d \
+  --net=host \
+  --ulimit nofile=262144 \
+  -e ELIXIR_ERL_OPTIONS \
+  -e ELIXIR_ERL_OPTIONS \
+  -e PUBLISH_JWT_AUDIENCE \
+  -e SSE_JWT_AUDIENCE \
+  -e SSE_USER_AGENT \
+  -e SSE_JWT_SECRET \
+  -e SSE_JWT_ISSUER \
+  -e PUBLISH_JWT_SECRET \
+  -e PUBLISH_JWT_ISSUER \
+  -e PUBLISH_URL \
+  -e SSE_URL \
+  -e DELAY_BETWEEN_MESSAGES_MIN \
+  -e DELAY_BETWEEN_MESSAGES_MAX \
+  -e NUMBER_OF_MESSAGES_MIN \
+  -e NUMBER_OF_MESSAGES_MAX \
+  -e SSE_TIMEOUT \
+  -e INITIAL_DELAY_MAX \
+  -e PUBLISH_HTTP_POOL_SIZE \
+  -e NB_USER \
+  ${var.neurow_load_test_image}
 
 aws secretsmanager get-secret-value --region="${var.region}" --secret-id=${var.dd_secret_arn} | jq -r .SecretString > /tmp/secret
 
