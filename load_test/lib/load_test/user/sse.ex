@@ -62,7 +62,11 @@ defmodule SseUser do
     {:ok, conn_pid} = :gun.open(String.to_atom(parsed_url.host), parsed_url.port, opts)
     {:ok, proto} = :gun.await_up(conn_pid)
     Logger.debug(fn -> "Connection established with proto #{inspect(proto)}" end)
-    stream_ref = :gun.get(conn_pid, parsed_url.path, headers)
+
+    stream_ref =
+      if parsed_url.scheme == "ws",
+        do: :gun.ws_upgrade(conn_pid, parsed_url.path, headers),
+        else: :gun.get(conn_pid, parsed_url.path, headers)
 
     state = %SseState{
       user_name: user_name,
@@ -79,12 +83,37 @@ defmodule SseUser do
     wait_for_messages(state, conn_pid, stream_ref, expected_messages)
   end
 
+  defp process_message(state, conn_pid, stream_ref, first_message, remaining_messages, msg) do
+    msg = String.trim(msg)
+    Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
+
+    if msg =~ "event: ping" do
+      wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages])
+    else
+      if check_message(state, msg, first_message) == :error do
+        :ok = :gun.close(conn_pid)
+        raise("#{header(state)} Message check error")
+      end
+
+      state = Map.put(state, :current_message, state.current_message + 1)
+      wait_for_messages(state, conn_pid, stream_ref, remaining_messages)
+    end
+  end
+
   defp wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages]) do
     Logger.debug(fn -> "#{header(state)} Waiting for message: #{first_message}" end)
 
     result = :gun.await(conn_pid, stream_ref, state.sse_timeout)
 
     case result do
+      {:upgrade, _, _} ->
+        Logger.debug(
+          "#{header(state)} Connected to websocket, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
+        )
+
+        state.start_publisher_callback.()
+        wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages])
+
       {:response, _, code, _} when code == 200 ->
         Logger.debug(
           "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
@@ -99,21 +128,11 @@ defmodule SseUser do
         Stats.inc_msg_received_http_error()
         raise("#{header(state)} Error")
 
+      {:ws, {:text, msg}} ->
+        process_message(state, conn_pid, stream_ref, first_message, remaining_messages, msg)
+
       {:data, _, msg} ->
-        msg = String.trim(msg)
-        Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
-
-        if msg =~ "event: ping" do
-          wait_for_messages(state, conn_pid, stream_ref, [first_message | remaining_messages])
-        else
-          if check_message(state, msg, first_message) == :error do
-            :ok = :gun.close(conn_pid)
-            raise("#{header(state)} Message check error")
-          end
-
-          state = Map.put(state, :current_message, state.current_message + 1)
-          wait_for_messages(state, conn_pid, stream_ref, remaining_messages)
-        end
+        process_message(state, conn_pid, stream_ref, first_message, remaining_messages, msg)
 
       msg ->
         Logger.error("#{header(state)} Unexpected message #{inspect(msg)}")
