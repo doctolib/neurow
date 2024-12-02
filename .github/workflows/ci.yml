@@ -30,7 +30,7 @@ jobs:
       - run: cd load_test && mix deps.get
       - run: cd load_test && mix compile --warnings-as-errors
 
-  docker_neurow:
+  docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
