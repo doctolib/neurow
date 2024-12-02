@@ -32,6 +32,17 @@ defmodule Neurow.Application do
     })
   end
 
+  defp dispatcher do
+    [
+      {:_,
+       [
+         {Neurow.Configuration.public_api_context_path() <> "/v1/websocket",
+          Neurow.PublicApi.Websocket, []},
+         {:_, Plug.Cowboy.Handler, {Neurow.PublicApi.Endpoint, []}}
+       ]}
+    ]
+  end
+
   def start(%{
         public_api_port: public_api_port,
         internal_api_port: internal_api_port,
@@ -50,7 +61,8 @@ defmodule Neurow.Application do
         max_header_value_length: max_header_value_length,
         idle_timeout: :infinity
       ],
-      transport_options: [max_connections: :infinity]
+      transport_options: [max_connections: :infinity],
+      dispatch: dispatcher()
     ]
 
     {sse_http_scheme, public_api_http_config} =
