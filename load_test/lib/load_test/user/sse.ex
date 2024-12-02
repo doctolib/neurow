@@ -55,7 +55,7 @@ defmodule SseUser do
          [{:match_fun, :public_key.pkix_verify_hostname_match_fun(:https)}]}
       ],
       http_opts: %{
-        closing_timeout: context.sse_timeout + 1000
+        closing_timeout: :infinity,
       }
     }
 
