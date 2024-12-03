@@ -29,16 +29,15 @@ config :neurow,
   public_api_context_path: System.get_env("PUBLIC_API_CONTEXT_PATH") || "",
   sse_timeout: String.to_integer(System.get_env("SSE_TIMEOUT") || "900000"),
   sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000"),
-  max_header_value_length: String.to_integer(System.get_env("MAX_HEADER_VALUE_LENGTH") || "8192")
+  max_header_value_length: String.to_integer(System.get_env("MAX_HEADER_VALUE_LENGTH") || "8192"),
+  ssl_keyfile: System.get_env("SSL_KEYFILE"),
+  ssl_certfile: System.get_env("SSL_CERTFILE")
 
 # Internal API configuration
 config :neurow,
   internal_api_port: String.to_integer(System.get_env("INTERNAL_API_PORT") || "3000"),
   internal_api_jwt_max_lifetime:
     String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "1500")
-
-config :neurow, ssl_keyfile: System.get_env("SSL_KEYFILE")
-config :neurow, ssl_certfile: System.get_env("SSL_CERTFILE")
 
 config :neurow,
   history_min_duration: String.to_integer(System.get_env("HISTORY_MIN_DURATION") || "30")

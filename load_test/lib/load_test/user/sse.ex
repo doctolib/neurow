@@ -80,7 +80,7 @@ defmodule SseUser do
       state
     end
 
-    reconnect = if context.auto_reconnect, do: 0, else: -1
+    reconnect = if context.sse_auto_reconnect, do: 0, else: -1
 
     state = %SseState{
       user_name: user_name,
