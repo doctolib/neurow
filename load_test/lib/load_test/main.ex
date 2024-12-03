@@ -20,7 +20,7 @@ defmodule LoadTest.Main do
       :delay_between_messages_min,
       :delay_between_messages_max,
       :number_of_messages_min,
-      :number_of_messages_max,
+      :number_of_messages_max
     ]
   end
 
@@ -75,7 +75,7 @@ defmodule LoadTest.Main do
       delay_between_messages_min: delay_between_messages_min,
       delay_between_messages_max: delay_between_messages_max,
       number_of_messages_min: number_of_messages_min,
-      number_of_messages_max: number_of_messages_max,
+      number_of_messages_max: number_of_messages_max
     }
 
     Logger.warning("SSE base url: #{sse_url}")

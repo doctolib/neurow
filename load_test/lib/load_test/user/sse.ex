@@ -18,6 +18,9 @@ defmodule SseUser do
     ]
   end
 
+  defp last_event_id_header(nil), do: []
+  defp last_event_id_header(last_event_id), do: [{"Last-Event-ID", last_event_id}]
+
   defp build_headers(context, state, topic) do
     iat = :os.system_time(:second)
     exp = iat + context.sse_jwt_expiration
@@ -37,17 +40,10 @@ defmodule SseUser do
     signed = JOSE.JWT.sign(context.sse_jwt_secret, jws, jwt)
     {%{alg: :jose_jws_alg_hmac}, compact_signed} = JOSE.JWS.compact(signed)
 
-    last_event_id =
-      if state.last_event_id != nil do
-        [{["Last-Event-ID"], state.last_event_id}]
-      else
-        []
-      end
-
     [
       {["Authorization"], "Bearer #{compact_signed}"},
       {["User-Agent"], context.sse_user_agent}
-    ] ++ last_event_id
+    ] ++ last_event_id_header(state.last_event_id)
   end
 
   def run(context, user_name, topic, expected_messages) do
