@@ -172,7 +172,7 @@ defmodule Neurow.PublicApi.Endpoint do
   end
 
   defp process_history(conn, last_event_id, sent, [first | rest]) do
-    {_topic, message} = first
+    {_, message} = first
 
     if message.timestamp > last_event_id do
       conn = write_chunk(conn, message)
