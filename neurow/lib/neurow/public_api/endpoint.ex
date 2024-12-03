@@ -245,19 +245,16 @@ defmodule Neurow.PublicApi.Endpoint do
             Neurow.Observability.MessageBrokerStats.inc_message_sent(issuer)
             new_last_message_ms = :os.system_time(:millisecond)
 
-            Process.sleep(500)
-
-            conn |> send_resp(404, "aaa")
-            # conn
-            # |> loop(
-            #   sse_timeout_ms,
-            #   keep_alive_ms,
-            #   new_last_message_ms,
-            #   new_last_message_ms,
-            #   jwt_exp_s,
-            #   issuer,
-            #   last_manual_garbage_collect_ms
-            # )
+            conn
+            |> loop(
+              sse_timeout_ms,
+              keep_alive_ms,
+              new_last_message_ms,
+              new_last_message_ms,
+              jwt_exp_s,
+              issuer,
+              last_manual_garbage_collect_ms
+            )
 
           :shutdown ->
             Logger.debug("Client disconnected due to node shutdown")
