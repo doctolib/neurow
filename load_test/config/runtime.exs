@@ -55,3 +55,6 @@ config :load_test,
 
 config :load_test,
   initial_delay_max: String.to_integer(System.get_env("INITIAL_DELAY_MAX") || "5000")
+
+config :load_test,
+  auto_reconnect: String.to_atom(System.get_env("AUTO_RECONNECT") || "false")

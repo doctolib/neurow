@@ -19,7 +19,8 @@ defmodule LoadTest.Main do
       :delay_between_messages_min,
       :delay_between_messages_max,
       :number_of_messages_min,
-      :number_of_messages_max
+      :number_of_messages_max,
+      :auto_reconnect
     ]
   end
 
@@ -38,6 +39,7 @@ defmodule LoadTest.Main do
     {:ok, sse_jwt_secret} = Application.fetch_env(:load_test, :sse_jwt_secret)
     {:ok, sse_jwt_audience} = Application.fetch_env(:load_test, :sse_jwt_audience)
     {:ok, sse_jwt_expiration} = Application.fetch_env(:load_test, :sse_jwt_expiration)
+    {:ok, auto_reconnect} = Application.fetch_env(:load_test, :auto_reconnect)
 
     {:ok, publish_url} = Application.fetch_env(:load_test, :publish_url)
     {:ok, publish_timeout} = Application.fetch_env(:load_test, :publish_timeout)
@@ -72,13 +74,15 @@ defmodule LoadTest.Main do
       delay_between_messages_min: delay_between_messages_min,
       delay_between_messages_max: delay_between_messages_max,
       number_of_messages_min: number_of_messages_min,
-      number_of_messages_max: number_of_messages_max
+      number_of_messages_max: number_of_messages_max,
+      auto_reconnect: auto_reconnect
     }
 
     Logger.warning("SSE base url: #{sse_url}")
     Logger.warning("Publish base url: #{publish_url}")
     Logger.warning("User agent: #{sse_user_agent}")
     Logger.warning("Starting load test with #{nb_user} users")
+    Logger.warning("Auto reconnect: #{auto_reconnect}")
 
     Enum.map(1..nb_user, fn _ ->
       Task.Supervisor.async(LoadTest.TaskSupervisor, fn ->

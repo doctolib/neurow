@@ -172,7 +172,7 @@ defmodule Neurow.PublicApi.Endpoint do
   end
 
   defp process_history(conn, last_event_id, sent, [first | rest]) do
-    {_, message} = first
+    {_topic, message} = first
 
     if message.timestamp > last_event_id do
       conn = write_chunk(conn, message)
@@ -245,16 +245,19 @@ defmodule Neurow.PublicApi.Endpoint do
             Neurow.Observability.MessageBrokerStats.inc_message_sent(issuer)
             new_last_message_ms = :os.system_time(:millisecond)
 
-            conn
-            |> loop(
-              sse_timeout_ms,
-              keep_alive_ms,
-              new_last_message_ms,
-              new_last_message_ms,
-              jwt_exp_s,
-              issuer,
-              last_manual_garbage_collect_ms
-            )
+            Process.sleep(500)
+
+            conn |> send_resp(404, "aaa")
+            # conn
+            # |> loop(
+            #   sse_timeout_ms,
+            #   keep_alive_ms,
+            #   new_last_message_ms,
+            #   new_last_message_ms,
+            #   jwt_exp_s,
+            #   issuer,
+            #   last_manual_garbage_collect_ms
+            # )
 
           :shutdown ->
             Logger.debug("Client disconnected due to node shutdown")
