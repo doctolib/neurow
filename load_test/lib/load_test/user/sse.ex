@@ -125,13 +125,15 @@ defmodule SseUser do
           "#{header(state)} Connected, waiting: #{length(remaining_messages) + 1} messages, url #{state.url}"
         )
 
-        if state.start_publisher_callback != nil do
-          state.start_publisher_callback.()
-          state = Map.put(state, :start_publisher_callback, nil)
-          wait_for_messages(state, [first_message | remaining_messages])
-        else
-          wait_for_messages(state, [first_message | remaining_messages])
-        end
+        state =
+          if state.start_publisher_callback do
+            state.start_publisher_callback.()
+            Map.put(state, :start_publisher_callback, nil)
+          else
+            state
+          end
+
+        wait_for_messages(state, [first_message | remaining_messages])
 
       {:response, _, code, _} ->
         Logger.error("#{header(state)} Error: #{inspect(code)}")
