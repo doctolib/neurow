@@ -24,6 +24,9 @@ defmodule Neurow.JwtAuthPlugTest do
          send_forbidden: fn conn, error_code, error_message ->
            conn |> assign(:forbidden_error, {error_code, error_message})
          end,
+         send_bad_request: fn conn, error_code, error_message ->
+           conn |> assign(:bad_request, {error_code, error_message})
+         end,
          jwk_provider: fn issuer ->
            case issuer do
              "issuer_1" -> [@issuer_1_jwk_1, @issuer_1_jwk_2]
@@ -94,8 +97,8 @@ defmodule Neurow.JwtAuthPlugTest do
 
     assert response.halted
 
-    assert response.assigns[:forbidden_error] ==
-             {:invalid_authentication_token, "Invalid authentication token"},
+    assert response.assigns[:bad_request] ==
+             {:invalid_authorization_header, "Invalid authorization header"},
            "Error details"
   end
 
@@ -106,7 +109,7 @@ defmodule Neurow.JwtAuthPlugTest do
       assert response.halted, "Response halted"
       assert response.halted
 
-      assert response.assigns[:forbidden_error] ==
+      assert response.assigns[:bad_request] ==
                {:invalid_authorization_header, "Invalid authorization header"},
              "Error details"
     end
@@ -122,7 +125,7 @@ defmodule Neurow.JwtAuthPlugTest do
 
       assert response.halted
 
-      assert response.assigns[:forbidden_error] ==
+      assert response.assigns[:bad_request] ==
                {:invalid_authorization_header, "Invalid authorization header"},
              "Error details"
     end

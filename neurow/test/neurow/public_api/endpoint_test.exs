@@ -12,12 +12,12 @@ defmodule Neurow.PublicApi.EndpointTest do
         conn(:get, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_status, 400}
         assert_receive {:send_resp_body, body}
 
         json_event = parse_sse_json_event(body)
 
-        assert json_event.event == "neurow_error_403"
+        assert json_event.event == "neurow_error_400"
 
         assert json_event.data ==
                  %{
@@ -469,12 +469,12 @@ defmodule Neurow.PublicApi.EndpointTest do
         conn(:get, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_status, 400}
         assert_receive {:send_resp_body, body}
 
         json_event = parse_sse_json_event(body)
 
-        assert json_event.event == "neurow_error_403"
+        assert json_event.event == "neurow_error_400"
 
         assert json_event.data ==
                  %{

@@ -21,7 +21,7 @@ defmodule Neurow.InternalApi.EndpointTest do
   test "other routes requires a JWT sent in authorization header" do
     conn = conn(:get, "/foo")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
-    assert call.status == 403
+    assert call.status == 400
 
     conn =
       conn(:get, "/foo")
@@ -34,7 +34,7 @@ defmodule Neurow.InternalApi.EndpointTest do
   test "other routes requires a JWT sent in x-interservice-authorization header" do
     conn = conn(:get, "/foo")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
-    assert call.status == 403
+    assert call.status == 400
 
     conn =
       conn(:get, "/foo")
@@ -45,7 +45,7 @@ defmodule Neurow.InternalApi.EndpointTest do
   end
 
   describe "POST /v1/subscribe" do
-    test "returns a 403 if called without a JWT token" do
+    test "returns a 400 if called without a JWT token" do
       body =
         :jiffy.encode(%{
           message: %{event: "event_foo", payload: "foo56"},
@@ -56,10 +56,10 @@ defmodule Neurow.InternalApi.EndpointTest do
         conn(:post, "/v1/publish", body)
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
-      assert call.status == 403
+      assert call.status == 400
     end
 
-    test "returns a 403 if called with an invalid JWT token" do
+    test "returns a 400 if called with an invalid JWT token" do
       body =
         :jiffy.encode(%{
           message: %{event: "event_foo", payload: "foo56", timestamp: 123_456},
@@ -71,7 +71,7 @@ defmodule Neurow.InternalApi.EndpointTest do
         |> put_req_header("authorization", "Basic dXNlcjpwYXNzd29yZA==")
 
       call = Neurow.InternalApi.Endpoint.call(conn, [])
-      assert call.status == 403
+      assert call.status == 400
     end
 
     test "returns a 400 error if the request payload is invalid" do
