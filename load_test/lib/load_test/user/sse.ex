@@ -186,11 +186,8 @@ defmodule SseUser do
   end
 
   defp check_message(state, received_message, expected_message) do
-    [first | after_first] = String.split(received_message, "\n")
+    [first, _, third | _] = String.split(received_message, "\n")
     [_, id] = String.split(first, " ")
-
-    [_ | after_second] = after_first
-    [third | _] = after_second
 
     try do
       [_, ts, message, _, _] = String.split(third, " ", parts: 5)
