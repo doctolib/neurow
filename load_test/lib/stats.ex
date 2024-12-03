@@ -14,6 +14,11 @@ defmodule Stats do
     )
 
     Gauge.declare(
+      name: :reconnect,
+      help: "Reconnection counter"
+    )
+
+    Gauge.declare(
       name: :users,
       labels: [:status],
       help: "User counter"
@@ -33,6 +38,7 @@ defmodule Stats do
     Gauge.set([name: :messages, labels: [:received, :http_error]], 0)
     Gauge.set([name: :messages, labels: [:published, :ok]], 0)
     Gauge.set([name: :messages, labels: [:published, :error]], 0)
+    Gauge.set([name: :reconnect], 0)
 
     Gauge.declare(
       name: :memory_usage,
@@ -90,6 +96,10 @@ defmodule Stats do
 
   def inc_msg_published_error() do
     Gauge.inc(name: :messages, labels: [:published, :error])
+  end
+
+  def inc_reconnect() do
+    Gauge.inc(name: :reconnect)
   end
 
   def observe_propagation(delay) do

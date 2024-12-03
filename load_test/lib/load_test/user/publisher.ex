@@ -75,7 +75,7 @@ defmodule LoadTest.User.Publisher do
     duration = :os.system_time(:millisecond) - state.start_time
 
     Logger.info(fn ->
-      "publisher_#{state.user_name}: All messages published (#{state.message_count}) to #{state.publish_url}, duration: #{duration / 1000}"
+      "publisher_#{state.user_name}: User ok, #{state.message_count} messages published, duration: #{duration / 1000}"
     end)
   end
 

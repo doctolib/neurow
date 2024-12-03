@@ -32,6 +32,7 @@ docker run --rm -d \
   -e DELAY_BETWEEN_MESSAGES_MAX \
   -e NUMBER_OF_MESSAGES_MIN \
   -e NUMBER_OF_MESSAGES_MAX \
+  -e SSE_AUTO_RECONNECT \
   -e SSE_TIMEOUT \
   -e INITIAL_DELAY_MAX \
   -e PUBLISH_HTTP_POOL_SIZE \
@@ -52,6 +53,7 @@ echo "instances:
     - propagation_delay_sum
     - propagation_delay_count
     - memory_usage
+    - reconnect
     - erlang_vm_memory_atom_bytes_total
     - erlang_vm_memory_bytes_total
     - erlang_vm_memory_dets_tables
