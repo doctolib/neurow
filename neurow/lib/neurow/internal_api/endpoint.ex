@@ -16,7 +16,7 @@ defmodule Neurow.InternalApi.Endpoint do
       &Neurow.Configuration.internal_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.internal_api_jwt_max_lifetime/0,
     send_forbidden: &Neurow.InternalApi.Endpoint.send_forbidden/3,
-    send_bad_request: &Neurow.InternalApi.Endpoint.send_bad_request/3,
+    send_unauthorized: &Neurow.InternalApi.Endpoint.send_unauthorized/3,
     inc_error_callback: &Neurow.Observability.SecurityStats.inc_jwt_errors_internal/0,
     exclude_path_prefixes: [
       "/ping",
@@ -166,8 +166,8 @@ defmodule Neurow.InternalApi.Endpoint do
     send_error(conn, error_code, error_message, :forbidden)
   end
 
-  def send_bad_request(conn, error_code, error_message) do
-    send_error(conn, error_code, error_message, :bad_request)
+  def send_unauthorized(conn, error_code, error_message) do
+    send_error(conn, error_code, error_message, :unauthorized)
   end
 
   defp send_error(conn, error_code, error_message, status \\ :bad_request) do
