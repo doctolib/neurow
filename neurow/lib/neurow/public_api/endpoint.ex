@@ -9,6 +9,7 @@ defmodule Neurow.PublicApi.Endpoint do
     jwk_provider: &Neurow.Configuration.public_api_issuer_jwks/1,
     audience: &Neurow.Configuration.public_api_audience/0,
     send_forbidden: &Neurow.PublicApi.Endpoint.send_forbidden/3,
+    send_unauthorized: &Neurow.PublicApi.Endpoint.send_unauthorized/3,
     verbose_authentication_errors:
       &Neurow.Configuration.public_api_verbose_authentication_errors/0,
     max_lifetime: &Neurow.Configuration.public_api_jwt_max_lifetime/0,
@@ -84,6 +85,10 @@ defmodule Neurow.PublicApi.Endpoint do
 
   def send_forbidden(conn, error_code, error_message) do
     send_http_error(conn, 403, error_code, error_message)
+  end
+
+  def send_unauthorized(conn, error_code, error_message) do
+    send_http_error(conn, 401, error_code, error_message)
   end
 
   def preflight_request(conn, _opts) do
