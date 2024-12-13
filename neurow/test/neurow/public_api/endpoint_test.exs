@@ -12,12 +12,12 @@ defmodule Neurow.PublicApi.EndpointTest do
         conn(:get, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_status, 401}
         assert_receive {:send_resp_body, body}
 
         json_event = parse_sse_json_event(body)
 
-        assert json_event.event == "neurow_error_403"
+        assert json_event.event == "neurow_error_401"
 
         assert json_event.data ==
                  %{
@@ -37,12 +37,12 @@ defmodule Neurow.PublicApi.EndpointTest do
         |> put_req_header("authorization", "Bearer bad_token")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_status, 401}
         assert_receive {:send_resp_body, body}
 
         json_event = parse_sse_json_event(body)
 
-        assert json_event.event == "neurow_error_403"
+        assert json_event.event == "neurow_error_401"
 
         assert json_event.data == %{
                  "errors" => [
@@ -464,17 +464,17 @@ defmodule Neurow.PublicApi.EndpointTest do
       :ok
     end
 
-    test "the authentication logic is applyed to urls prefixed by the context path" do
+    test "the authentication logic is applied to urls prefixed by the context path" do
       conn =
         conn(:get, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
-        assert_receive {:send_resp_status, 403}
+        assert_receive {:send_resp_status, 401}
         assert_receive {:send_resp_body, body}
 
         json_event = parse_sse_json_event(body)
 
-        assert json_event.event == "neurow_error_403"
+        assert json_event.event == "neurow_error_401"
 
         assert json_event.data ==
                  %{

@@ -11,6 +11,7 @@ defmodule Neurow.JwtAuthPlug do
       :max_lifetime,
       :inc_error_callback,
       :send_forbidden,
+      :send_unauthorized,
       allowed_algorithm: "HS256",
       verbose_authentication_errors: false,
       exclude_path_prefixes: []
@@ -58,6 +59,11 @@ defmodule Neurow.JwtAuthPlug do
         ) do
           conn |> assign(:jwt_payload, payload.fields)
         else
+          {:error, error_code, message}
+          when error_code in [:invalid_authorization_header, :invalid_jwt_token] ->
+            options.inc_error_callback.()
+            conn |> unauthorized(error_code, message, options)
+
           {:error, code, message} ->
             options.inc_error_callback.()
             conn |> forbidden(code, message, options)
@@ -211,6 +217,19 @@ defmodule Neurow.JwtAuthPlug do
       _ ->
         {:error, :missing_aud_claim, "Missing aud claim"}
     end
+  end
+
+  defp unauthorized(conn, error_code, error_message, options) do
+    Logger.error(
+      "JWT authentication error: #{error_code} - #{error_message}, path: '#{conn.request_path}'",
+      category: "security",
+      error_code: "jwt_authentication.#{error_code}",
+      authorization_header: conn |> get_req_header("authorization") |> List.first(),
+      trace_id: conn |> get_req_header("x-request-id") |> List.first(),
+      client_ip: conn |> get_req_header("x-forwarded-for") |> List.first()
+    )
+
+    options.send_unauthorized.(conn, error_code, error_message) |> halt
   end
 
   defp forbidden(conn, error_code, error_message, options) do
