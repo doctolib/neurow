@@ -38,6 +38,7 @@ defmodule Neurow.EcsLogFormatter do
     |> with_optional_attribute(metadata[:trace_id], "trace.id")
     |> with_optional_attribute(metadata[:error_code], "error.code")
     |> with_optional_attribute(metadata[:client_ip], "client.ip")
+    |> with_optional_attribute(metadata[:authorization_header], "http.request.authorization")
     |> :jiffy.encode()
     |> newline()
   end
