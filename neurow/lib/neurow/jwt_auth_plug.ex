@@ -225,6 +225,7 @@ defmodule Neurow.JwtAuthPlug do
       category: "security",
       error_code: "jwt_authentication.#{error_code}",
       authorization_header: conn |> get_req_header("authorization") |> List.first(),
+      user_agent_header: conn |> get_req_header("user-agent") |> List.first(),
       trace_id: conn |> get_req_header("x-request-id") |> List.first(),
       client_ip: conn |> get_req_header("x-forwarded-for") |> List.first()
     )
