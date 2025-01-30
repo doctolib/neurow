@@ -5,7 +5,7 @@ defmodule LoadTest.MixProject do
     [
       app: :load_test,
       version: "0.1.0",
-      elixir: "~> 1.17",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: releases()
