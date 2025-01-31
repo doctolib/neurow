@@ -45,7 +45,7 @@ defmodule Neurow.PublicApi.Endpoint do
           conn
           |> put_resp_header("content-type", "text/event-stream")
           |> put_resp_header("access-control-allow-origin", "*")
-          |> put_resp_header("cache-control", "no-cache")
+          |> put_resp_header("cache-control", "no-store")
           |> put_resp_header("connection", "close")
           |> put_resp_header("x-sse-timeout", to_string(timeout_ms))
           |> put_resp_header("x-sse-keepalive", to_string(keep_alive_ms))
