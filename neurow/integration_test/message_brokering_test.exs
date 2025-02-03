@@ -34,7 +34,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
 
           assert_headers(headers, [
             {"access-control-allow-origin", "*"},
-            {"cache-control", "no-store"},
+            {"cache-control", "no-cache, no-store"},
             {"connection", "close"},
             {"content-type", "text/event-stream"},
             {"transfer-encoding", "chunked"}
@@ -91,7 +91,7 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
 
                 assert_headers(headers, [
                   {"access-control-allow-origin", "*"},
-                  {"cache-control", "no-store"},
+                  {"cache-control", "no-cache, no-store"},
                   {"connection", "close"},
                   {"content-type", "text/event-stream"},
                   {"transfer-encoding", "chunked"}
