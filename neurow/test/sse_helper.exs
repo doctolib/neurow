@@ -1,6 +1,6 @@
 defmodule SseHelper do
   @moduledoc """
-  Provides Helper function to test SSE connections
+  Provides Helper functions to test SSE connections
   - Functions at the root of the modules can be used both in unit and integration tests
   - Functions in SseHelper.PlugSse help to test Plug endpoint in unit test,
   - Functions in SSeHelper.HttpSse help to test Neurow though actual HTTP connections in integration tests
@@ -121,7 +121,7 @@ defmodule SseHelper do
         [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"] ++
           extra_headers
 
-      async_response = HTTPoison.get!(subscribe_url(port), headers, stream_to: self())
+      async_response = HTTPoison.post!(subscribe_url(port), "", headers, stream_to: self())
       assert_fn.()
       :hackney.stop_async(async_response.id)
     end

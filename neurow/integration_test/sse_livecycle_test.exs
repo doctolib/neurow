@@ -3,6 +3,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
 
   import SseHelper
   import SseHelper.HttpSse
+  import JwtHelper
 
   alias Neurow.IntegrationTest.TestCluster
 
@@ -125,6 +126,30 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
         cookie: fake_cookie
       )
     end
+  end
+
+  test "also supports GET HTTP requests for SSE subscription", %{
+    cluster_state: %{
+      public_api_ports: [first_public_port | _other_ports]
+    }
+  } do
+    headers =
+      [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic")}"]
+
+    async_response = HTTPoison.get!(subscribe_url(first_public_port), headers, stream_to: self())
+
+    assert_receive %HTTPoison.AsyncStatus{code: 200}
+    assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+
+    assert_headers(headers, [
+      {"access-control-allow-origin", "*"},
+      {"cache-control", "no-cache, no-store"},
+      {"connection", "close"},
+      {"content-type", "text/event-stream"},
+      {"transfer-encoding", "chunked"}
+    ])
+
+    :hackney.stop_async(async_response.id)
   end
 
   def override_timeout(timeout) do

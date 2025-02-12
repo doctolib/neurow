@@ -9,7 +9,7 @@ defmodule Neurow.PublicApi.EndpointTest do
   describe "authentication" do
     test "denies access if no JWT token is provided" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_resp_status, 401}
@@ -33,7 +33,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
     test "denies access if an invalid JWT token is provided" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header("authorization", "Bearer bad_token")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
@@ -57,7 +57,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
     test "allows access if a valid JWT token is provided" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("foo56")}"
@@ -72,7 +72,7 @@ defmodule Neurow.PublicApi.EndpointTest do
   describe "messaging" do
     test "transmits messages for the subscribed topic" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -113,7 +113,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
     test "returns a bad request error if the Last-Event_Id header is not an integer" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -152,7 +152,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       publish_message("test_issuer1-test_topic1", 8, "Message ID8")
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -169,7 +169,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       publish_message("test_issuer1-other_topic", 7, "This message is not expected")
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -194,7 +194,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       publish_message("test_issuer1-test_topic1", 8, "Message ID8")
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -239,7 +239,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       publish_message("test_issuer1-test_topic1", 8, "Message ID8")
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -263,7 +263,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       publish_message("test_issuer1-test_topic1", 8, "Message ID8")
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -301,7 +301,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       publish_message("test_issuer1-test_topic1", 8, "Message ID8")
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -341,7 +341,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       override_timeout(500)
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -357,7 +357,7 @@ defmodule Neurow.PublicApi.EndpointTest do
       override_keepalive(500)
 
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -379,7 +379,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
     test "the client is disconnected when the JWT token expires" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1", duration_s: 3)}"
@@ -466,7 +466,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
     test "the authentication logic is applied to urls prefixed by the context path" do
       conn =
-        conn(:get, "/v1/subscribe")
+        conn(:post, "/v1/subscribe")
 
       call(Neurow.PublicApi.Endpoint, conn, fn ->
         assert_receive {:send_resp_status, 401}
@@ -490,7 +490,7 @@ defmodule Neurow.PublicApi.EndpointTest do
 
     test "The subscribe url is prefixed with the context path" do
       conn =
-        conn(:get, "/context_path/v1/subscribe")
+        conn(:post, "/context_path/v1/subscribe")
         |> put_req_header(
           "authorization",
           "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
@@ -509,6 +509,29 @@ defmodule Neurow.PublicApi.EndpointTest do
                }
       end)
     end
+  end
+
+  test "also support GET HTTP requests for SSE subscription" do
+    conn =
+      conn(:get, "/v1/subscribe")
+      |> put_req_header(
+        "authorization",
+        "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic1")}"
+      )
+
+    call(Neurow.PublicApi.Endpoint, conn, fn ->
+      assert_receive {:send_chunked, 200}
+
+      publish_message("test_issuer1-test_topic1", 1234, "Message")
+
+      assert_receive {:chunk, first_event}
+
+      assert parse_sse_event(first_event) == %{
+               id: "1234",
+               event: "test-event",
+               data: "Message"
+             }
+    end)
   end
 
   defp override_timeout(timeout) do

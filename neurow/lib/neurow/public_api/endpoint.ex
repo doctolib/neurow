@@ -25,7 +25,7 @@ defmodule Neurow.PublicApi.Endpoint do
     context_path = Neurow.Configuration.public_api_context_path()
 
     case {conn.method, conn.request_path} do
-      {"GET", ^context_path <> "/v1/subscribe"} ->
+      {method, ^context_path <> "/v1/subscribe"} when method in ["GET", "POST"] ->
         subscribe(conn)
 
       _ ->
