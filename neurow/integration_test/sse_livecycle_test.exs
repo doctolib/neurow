@@ -26,7 +26,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
 
         assert_headers(headers, [
           {"access-control-allow-origin", "*"},
-          {"cache-control", "no-cache, no-store"},
+          {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
           {"connection", "close"},
           {"content-type", "text/event-stream"},
           {"transfer-encoding", "chunked"}
@@ -60,7 +60,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
             headers,
             [
               {"access-control-allow-origin", "*"},
-              {"cache-control", "no-cache, no-store"},
+              {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
               {"connection", "close"},
               {"content-type", "text/event-stream"},
               {"transfer-encoding", "chunked"},
@@ -143,7 +143,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
 
     assert_headers(headers, [
       {"access-control-allow-origin", "*"},
-      {"cache-control", "no-cache, no-store"},
+      {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
       {"connection", "close"},
       {"content-type", "text/event-stream"},
       {"transfer-encoding", "chunked"}
