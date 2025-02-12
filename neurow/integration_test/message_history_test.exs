@@ -46,7 +46,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
         assert_headers(headers, [
           {"access-control-allow-origin", "*"},
-          {"cache-control", "no-cache, no-store"},
+          {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
           {"connection", "close"},
           {"content-type", "text/event-stream"},
           {"transfer-encoding", "chunked"}
@@ -70,9 +70,9 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_headers(headers, [
             {"access-control-allow-origin", "*"},
-            {"cache-control", "no-cache, no-store"},
+            {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
-            {"content-type", "text/event-stream"},
+            {"content-type", "text/event-stream"}
           ])
 
           assert_receive %HTTPoison.AsyncChunk{chunk: body}
@@ -112,7 +112,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_headers(headers, [
             {"access-control-allow-origin", "*"},
-            {"cache-control", "no-cache, no-store"},
+            {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
             {"content-type", "text/event-stream"},
             {"transfer-encoding", "chunked"}
@@ -139,7 +139,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_headers(headers, [
             {"access-control-allow-origin", "*"},
-            {"cache-control", "no-cache, no-store"},
+            {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
             {"content-type", "text/event-stream"},
             {"transfer-encoding", "chunked"}
@@ -171,7 +171,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
           assert_headers(headers, [
             {"access-control-allow-origin", "*"},
-            {"cache-control", "no-cache, no-store"},
+            {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
             {"content-type", "text/event-stream"},
             {"transfer-encoding", "chunked"}
