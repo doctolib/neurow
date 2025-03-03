@@ -221,11 +221,13 @@ defmodule Neurow.JwtAuthPlug do
 
   defp unauthorized(conn, error_code, error_message, options) do
     Logger.error(
-      "JWT authentication error: #{error_code} - #{error_message}, path: '#{conn.request_path}'",
+      "JWT authentication error: #{error_code} - #{error_message}, method: '#{conn.method}', path: '#{conn.request_path}'",
       category: "security",
       error_code: "jwt_authentication.#{error_code}",
       authorization_header: conn |> get_req_header("authorization") |> List.first(),
       user_agent_header: conn |> get_req_header("user-agent") |> List.first(),
+      http_path: conn.request_path,
+      http_method: conn.method,
       trace_id: conn |> get_req_header("x-request-id") |> List.first(),
       client_ip: conn |> get_req_header("x-forwarded-for") |> List.first()
     )
@@ -241,10 +243,13 @@ defmodule Neurow.JwtAuthPlug do
       end
 
     Logger.error(
-      "JWT authentication error: #{error_code} - #{error_message}, path: '#{conn.request_path}', audience: '#{options |> Options.audience()}', token: '#{jwt_token}'",
+      "JWT authentication error: #{error_code} - #{error_message}, method: '#{conn.method}', path: '#{conn.request_path}', audience: '#{options |> Options.audience()}', token: '#{jwt_token}'",
       category: "security",
       error_code: "jwt_authentication.#{error_code}",
+      authorization_header: conn |> get_req_header("authorization") |> List.first(),
       user_agent_header: conn |> get_req_header("user-agent") |> List.first(),
+      http_method: conn.method,
+      http_path: conn.request_path,
       trace_id: conn |> get_req_header("x-request-id") |> List.first(),
       client_ip: conn |> get_req_header("x-forwarded-for") |> List.first()
     )
