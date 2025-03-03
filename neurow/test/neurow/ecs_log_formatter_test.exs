@@ -169,6 +169,74 @@ defmodule Neurow.EcsLogFormatterTest do
            }
   end
 
+  test "supports optional http_method metadata" do
+    metadata = %{
+      time: 1_728_556_213_722_376,
+      mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
+      file: "test/neurow/ecs_log_formatter_test.exs",
+      line: 10,
+      http_method: "POST"
+    }
+
+    json_log =
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
+      |> :jiffy.decode([:return_maps])
+
+    assert json_log == %{
+             "@timestamp" => "2024-10-10T10:30:13.722376Z",
+             "log.level" => "info",
+             "log.name" => "Elixir.Neurow.EcsLogFormatterTest.fake_function/4",
+             "log.source" => %{
+               "file" => %{
+                 "name" => "test/neurow/ecs_log_formatter_test.exs",
+                 "line" => 10
+               }
+             },
+             "ecs.version" => "8.11.0",
+             "message" => "Hello, world!",
+             "category" => "app",
+             "service" => %{
+               "name" => "neurow",
+               "version" => "unknown"
+             },
+             "http.request.method" => "POST"
+           }
+  end
+
+  test "supports optional http_path metadata" do
+    metadata = %{
+      time: 1_728_556_213_722_376,
+      mfa: {Neurow.EcsLogFormatterTest, :fake_function, 4},
+      file: "test/neurow/ecs_log_formatter_test.exs",
+      line: 10,
+      http_path: "/foobar"
+    }
+
+    json_log =
+      Neurow.EcsLogFormatter.format(:info, "Hello, world!", nil, metadata)
+      |> :jiffy.decode([:return_maps])
+
+    assert json_log == %{
+             "@timestamp" => "2024-10-10T10:30:13.722376Z",
+             "log.level" => "info",
+             "log.name" => "Elixir.Neurow.EcsLogFormatterTest.fake_function/4",
+             "log.source" => %{
+               "file" => %{
+                 "name" => "test/neurow/ecs_log_formatter_test.exs",
+                 "line" => 10
+               }
+             },
+             "ecs.version" => "8.11.0",
+             "message" => "Hello, world!",
+             "category" => "app",
+             "service" => %{
+               "name" => "neurow",
+               "version" => "unknown"
+             },
+             "http.request.path" => "/foobar"
+           }
+  end
+
   test "multiline messages are inlined" do
     metadata = %{
       time: 1_728_556_213_722_376,
