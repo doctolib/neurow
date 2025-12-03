@@ -167,7 +167,9 @@ defmodule SseUser do
         reconnect(state, [first_message | remaining_messages], "Stream reset by server.")
 
       {:data, :nofin, chunk} ->
-        Logger.debug(fn -> "#{header(state)} Received chunk (#{byte_size(chunk)} bytes): #{inspect(chunk)}" end)
+        Logger.debug(fn ->
+          "#{header(state)} Received chunk (#{byte_size(chunk)} bytes): #{inspect(chunk)}"
+        end)
 
         # Accumulate chunk in buffer
         new_buffer = state.buffer <> chunk
