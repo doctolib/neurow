@@ -14,12 +14,29 @@ defmodule SseUser do
       :conn_pid,
       :stream_ref,
       :last_event_id,
-      :reconnect
+      :reconnect,
+      buffer: ""
     ]
   end
 
   defp last_event_id_header(nil), do: []
   defp last_event_id_header(last_event_id), do: [{"Last-Event-ID", last_event_id}]
+
+  # Parse complete SSE events from buffer
+  # SSE events are delimited by double newlines (\n\n)
+  # Returns {list_of_complete_events, remaining_buffer}
+  defp parse_sse_events(buffer) do
+    # Split on double newline to find complete events
+    parts = String.split(buffer, "\n\n")
+
+    # The last part might be incomplete, so we keep it in the buffer
+    {complete_events, [remaining]} = Enum.split(parts, -1)
+
+    # Filter out empty events (from multiple consecutive \n\n)
+    complete_events = Enum.reject(complete_events, &(&1 == ""))
+
+    {complete_events, remaining}
+  end
 
   defp build_headers(context, state, topic) do
     iat = :os.system_time(:second)
@@ -111,6 +128,8 @@ defmodule SseUser do
     Stats.inc_reconnect()
     state = state.connect_callback.(state)
     state = Map.put(state, :reconnect, state.reconnect + 1)
+    # Reset buffer on reconnect
+    state = Map.put(state, :buffer, "")
     wait_for_messages(state, messages)
   end
 
@@ -147,23 +166,24 @@ defmodule SseUser do
       {:error, {:stream_error, {:stream_error, :internal_error, :"Stream reset by server."}}} ->
         reconnect(state, [first_message | remaining_messages], "Stream reset by server.")
 
-      {:data, :nofin, msg} ->
-        msg = String.trim(msg)
-        Logger.debug(fn -> "#{header(state)} Received message: #{inspect(msg)}" end)
+      {:data, :nofin, chunk} ->
+        Logger.debug(fn -> "#{header(state)} Received chunk (#{byte_size(chunk)} bytes): #{inspect(chunk)}" end)
 
-        if msg =~ "event: ping" do
-          wait_for_messages(state, [first_message | remaining_messages])
-        else
-          case check_message(state, msg, first_message) do
-            :error ->
-              :ok = :gun.close(state.conn_pid)
-              raise("#{header(state)} Message check error")
+        # Accumulate chunk in buffer
+        new_buffer = state.buffer <> chunk
 
-            state ->
-              state = Map.put(state, :current_message, state.current_message + 1)
-              wait_for_messages(state, remaining_messages)
-          end
-        end
+        # Try to parse complete SSE events from buffer
+        {complete_events, remaining_buffer} = parse_sse_events(new_buffer)
+
+        Logger.debug(fn ->
+          "#{header(state)} Parsed #{length(complete_events)} complete events, buffer size: #{byte_size(remaining_buffer)}"
+        end)
+
+        # Update state with new buffer
+        state = Map.put(state, :buffer, remaining_buffer)
+
+        # Process all complete events
+        process_events(state, complete_events, [first_message | remaining_messages])
 
       msg ->
         Logger.error("#{header(state)} Unexpected message #{inspect(msg)}")
@@ -175,6 +195,50 @@ defmodule SseUser do
   defp wait_for_messages(state, []) do
     :ok = :gun.close(state.conn_pid)
     Logger.info("#{header(state)} All messages received")
+  end
+
+  # Process a list of complete SSE events
+  defp process_events(state, [], remaining_messages) do
+    # No complete events yet, keep waiting
+    wait_for_messages(state, remaining_messages)
+  end
+
+  defp process_events(state, [event | rest_events], [expected_message | remaining_messages]) do
+    event = String.trim(event)
+
+    Logger.debug(fn -> "#{header(state)} Processing event: #{inspect(event)}" end)
+
+    # Check if this is a ping event
+    if event =~ "event: ping" do
+      # Skip ping events and continue processing
+      if rest_events == [] do
+        wait_for_messages(state, [expected_message | remaining_messages])
+      else
+        process_events(state, rest_events, [expected_message | remaining_messages])
+      end
+    else
+      # Process the actual message
+      case check_message(state, event, expected_message) do
+        :error ->
+          :ok = :gun.close(state.conn_pid)
+          raise("#{header(state)} Message check error")
+
+        new_state ->
+          new_state = Map.put(new_state, :current_message, new_state.current_message + 1)
+
+          # If there are more events in this batch, process them
+          if rest_events == [] do
+            wait_for_messages(new_state, remaining_messages)
+          else
+            process_events(new_state, rest_events, remaining_messages)
+          end
+      end
+    end
+  end
+
+  defp process_events(state, _events, []) do
+    # All expected messages received
+    wait_for_messages(state, [])
   end
 
   defp header(state) do
