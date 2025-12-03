@@ -213,11 +213,7 @@ defmodule SseUser do
     # Check if this is a ping event
     if event =~ "event: ping" do
       # Skip ping events and continue processing
-      if rest_events == [] do
-        wait_for_messages(state, [expected_message | remaining_messages])
-      else
-        process_events(state, rest_events, [expected_message | remaining_messages])
-      end
+      process_events(state, rest_events, [expected_message | remaining_messages])
     else
       # Process the actual message
       case check_message(state, event, expected_message) do
@@ -227,13 +223,7 @@ defmodule SseUser do
 
         new_state ->
           new_state = Map.put(new_state, :current_message, new_state.current_message + 1)
-
-          # If there are more events in this batch, process them
-          if rest_events == [] do
-            wait_for_messages(new_state, remaining_messages)
-          else
-            process_events(new_state, rest_events, remaining_messages)
-          end
+          process_events(new_state, rest_events, remaining_messages)
       end
     end
   end
