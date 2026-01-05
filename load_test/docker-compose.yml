@@ -1,0 +1,47 @@
+---
+services:
+  neurow-load-test:
+    image: neurow-load-test:latest
+    container_name: neurow-load-test
+    ports:
+      - "2999:2999"
+    environment:
+      # Logging
+      - LOG_LEVEL=debug                                 # Log level: debug, info, warning, error (default: info)
+
+      # Server
+      - PORT=2999                                       # HTTP server port for metrics endpoint (default: 2999)
+      - NB_USER=1                                       # Number of concurrent users/connections to simulate (default: 1)
+
+      # SSE Connection Configuration
+      #- SSE_URL=http://sse-gateway:4000/v1/subscribe   # SSE endpoint URL (default: http://localhost:4000/v1/subscribe)
+      #- SSE_URL=http://neurow:5000/v1/subscribe # To test Neurow instead
+      - SSE_URL= # staging
+      - SSE_TIMEOUT=900000                              # SSE connection timeout in milliseconds (default: 900000 = 15 minutes)
+      - SSE_AUTO_RECONNECT=false                        # Auto-reconnect on SSE disconnection (default: false)
+      # - SSE_USER_AGENT=neurow_load_test/1.0          # User-Agent header for SSE requests (default: neurow_load_test/1.0)
+
+      # SSE JWT Authentication
+      - SSE_JWT_EXPIRATION=86400                        # JWT token expiration in seconds (default: 86400 = 24 hours)
+      - SSE_JWT_ISSUER=test_issuer1                     # JWT issuer claim (default: test_issuer1)
+      - SSE_JWT_SECRET=966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc  # JWT signing secret (must match neurow)
+      - SSE_JWT_AUDIENCE=neurow                         # JWT audience claim (must match neurow service_name)
+
+      # Publish Configuration
+      #- PUBLISH_URL=http://sse-gateway:3000/v1/publish # Publish endpoint URL (default: http://localhost:3000/v1/publish)
+      #- PUBLISH_URL=http://neurow:6000/v1/publish  # To test Neurow instea
+      - PUBLISH_URL= #staging
+      - PUBLISH_TIMEOUT=5000                            # Publish HTTP request timeout in milliseconds (default: 5000)
+      - PUBLISH_HTTP_POOL_SIZE=10000                    # HTTP connection pool size for publishing (must be >= NB_USER)
+      - PUBLISH_JWT_ISSUER=test_issuer1                 # JWT issuer for publish requests (default: test_issuer1)
+      - PUBLISH_JWT_SECRET=966KljJz--KyzyBnMOrFXfAkq9XMqWwPgdBV3cKTxsc  # JWT signing secret (must match neurow)
+      - PUBLISH_JWT_AUDIENCE=neurow                     # JWT audience for publish requests (must match neurow service_name)
+
+      # Load Test Behavior
+      - DELAY_BETWEEN_MESSAGES_MIN=500                  # Minimum delay between published messages in milliseconds (default: 500)
+      - DELAY_BETWEEN_MESSAGES_MAX=5000                 # Maximum delay between published messages in milliseconds (default: 5000)
+      - NUMBER_OF_MESSAGES_MIN=10                       # Minimum number of messages to publish per user (default: 10)
+      - NUMBER_OF_MESSAGES_MAX=50                       # Maximum number of messages to publish per user (default: 50)
+      - INITIAL_DELAY_MAX=15000                         # Maximum initial delay before starting to publish in milliseconds (default: 5000)
+    restart: unless-stopped
+
