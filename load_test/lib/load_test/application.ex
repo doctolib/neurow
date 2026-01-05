@@ -20,7 +20,14 @@ defmodule LoadTest.Application do
       {Finch,
        name: PublishFinch,
        pools: %{
-         :default => [size: publish_http_pool_size]
+         :default => [
+           size: publish_http_pool_size,
+           conn_opts: [
+             transport_opts: [
+               verify: :verify_none
+             ]
+           ]
+         ]
        }}
     ]
 
