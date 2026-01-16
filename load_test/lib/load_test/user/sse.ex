@@ -166,6 +166,9 @@ defmodule SseUser do
       {:error, {:stream_error, {:stream_error, :internal_error, :"Stream reset by server."}}} ->
         reconnect(state, [first_message | remaining_messages], "Stream reset by server.")
 
+      {:error, {:stream_error, :closed}} ->
+        reconnect(state, [first_message | remaining_messages], "Stream closed by server")
+
       {:data, :nofin, chunk} ->
         Logger.debug(fn ->
           "#{header(state)} Received chunk (#{byte_size(chunk)} bytes): #{inspect(chunk)}"
