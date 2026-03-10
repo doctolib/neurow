@@ -17,7 +17,9 @@ defmodule Neurow.Application do
     {:ok, ssl_certfile} = Application.fetch_env(:neurow, :ssl_certfile)
     {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
     {:ok, max_header_value_length} = Application.fetch_env(:neurow, :max_header_value_length)
-    {:ok, public_api_max_connections} = Application.fetch_env(:neurow, :public_api_max_connections)
+
+    {:ok, public_api_max_connections} =
+      Application.fetch_env(:neurow, :public_api_max_connections)
 
     cluster_topologies =
       Application.get_env(:neurow, :cluster_topologies, cluster_topologies_from_env_variables())
