@@ -40,7 +40,13 @@ config :neurow,
     String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "1500")
 
 config :neurow,
-  history_min_duration: String.to_integer(System.get_env("HISTORY_MIN_DURATION") || "30")
+  history_min_duration: String.to_integer(System.get_env("HISTORY_MIN_DURATION") || "30"),
+  public_api_max_connections:
+    (case System.get_env("PUBLIC_API_MAX_CONNECTIONS") do
+       nil -> :infinity
+       "infinity" -> :infinity
+       value -> String.to_integer(value)
+     end)
 
 case config_env() do
   :prod ->

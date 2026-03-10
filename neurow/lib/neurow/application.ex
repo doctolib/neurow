@@ -17,6 +17,7 @@ defmodule Neurow.Application do
     {:ok, ssl_certfile} = Application.fetch_env(:neurow, :ssl_certfile)
     {:ok, history_min_duration} = Application.fetch_env(:neurow, :history_min_duration)
     {:ok, max_header_value_length} = Application.fetch_env(:neurow, :max_header_value_length)
+    {:ok, public_api_max_connections} = Application.fetch_env(:neurow, :public_api_max_connections)
 
     cluster_topologies =
       Application.get_env(:neurow, :cluster_topologies, cluster_topologies_from_env_variables())
@@ -28,6 +29,7 @@ defmodule Neurow.Application do
       ssl_certfile: ssl_certfile,
       max_header_value_length: max_header_value_length,
       history_min_duration: history_min_duration,
+      public_api_max_connections: public_api_max_connections,
       cluster_topologies: cluster_topologies
     })
   end
@@ -39,6 +41,7 @@ defmodule Neurow.Application do
         ssl_certfile: ssl_certfile,
         max_header_value_length: max_header_value_length,
         history_min_duration: history_min_duration,
+        public_api_max_connections: public_api_max_connections,
         cluster_topologies: cluster_topologies
       }) do
     Logger.info("Current host #{node()}, environment: #{@mix_env}")
@@ -50,7 +53,7 @@ defmodule Neurow.Application do
         max_header_value_length: max_header_value_length,
         idle_timeout: :infinity
       ],
-      transport_options: [max_connections: :infinity]
+      transport_options: [max_connections: public_api_max_connections]
     ]
 
     {sse_http_scheme, public_api_http_config} =
