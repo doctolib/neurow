@@ -31,7 +31,13 @@ config :neurow,
   sse_keepalive: String.to_integer(System.get_env("SSE_KEEPALIVE") || "600000"),
   max_header_value_length: String.to_integer(System.get_env("MAX_HEADER_VALUE_LENGTH") || "8192"),
   ssl_keyfile: System.get_env("SSL_KEYFILE"),
-  ssl_certfile: System.get_env("SSL_CERTFILE")
+  ssl_certfile: System.get_env("SSL_CERTFILE"),
+  public_api_max_connections:
+    (case System.get_env("PUBLIC_API_MAX_CONNECTIONS") do
+       nil -> :infinity
+       "infinity" -> :infinity
+       value -> String.to_integer(value)
+     end)
 
 # Internal API configuration
 config :neurow,
@@ -40,13 +46,7 @@ config :neurow,
     String.to_integer(System.get_env("INTERNAL_API_JWT_MAX_LIFETIME") || "1500")
 
 config :neurow,
-  history_min_duration: String.to_integer(System.get_env("HISTORY_MIN_DURATION") || "30"),
-  public_api_max_connections:
-    (case System.get_env("PUBLIC_API_MAX_CONNECTIONS") do
-       nil -> :infinity
-       "infinity" -> :infinity
-       value -> String.to_integer(value)
-     end)
+  history_min_duration: String.to_integer(System.get_env("HISTORY_MIN_DURATION") || "30")
 
 case config_env() do
   :prod ->
