@@ -34,20 +34,11 @@ defmodule Neurow.Observability.SystemStats do
 
     # FD soft/hard limits are assumed to remain constant for the lifetime
     # of the process, so they are set once at startup.
-    case get_fd_limit(:soft) do
-      {:ok, soft} ->
-        Gauge.set([name: :fd_soft_limit], soft)
-
-      _ ->
-        :ok
-    end
-
-    case get_fd_limit(:hard) do
-      {:ok, hard} ->
-        Gauge.set([name: :fd_hard_limit], hard)
-
-      _ ->
-        :ok
+    for gauge <- [:fd_soft_limit, :fd_hard_limit] do
+      case get_fd_limit(gauge) do
+        {:ok, value} -> Gauge.set([name: gauge], value)
+        _ -> :ok
+      end
     end
 
     Periodic.start_link(
@@ -78,7 +69,7 @@ defmodule Neurow.Observability.SystemStats do
   end
 
   defp get_fd_limit(type) do
-    flag = if type == :soft, do: "-Sn", else: "-Hn"
+    flag = if type == :fd_soft_limit, do: "-Sn", else: "-Hn"
 
     with {output, 0} <- System.cmd("bash", ["-c", "ulimit #{flag}"]),
          {value, ""} <- output |> String.trim() |> Integer.parse() do
