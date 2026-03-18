@@ -15,14 +15,71 @@ defmodule Neurow.Observability.SystemStats do
     Gauge.set([name: :memory_usage], 0)
     Boolean.set([name: :stopping], false)
 
+    Gauge.declare(
+      name: :fd_open_count,
+      help: "Number of file descriptors currently opened by the process"
+    )
+
+    Gauge.declare(
+      name: :fd_soft_limit,
+      help: "Soft limit of file descriptors allowed for the process"
+    )
+
+    Gauge.declare(
+      name: :fd_hard_limit,
+      help: "Hard limit of file descriptors allowed for the process"
+    )
+
+    Gauge.set([name: :fd_open_count], 0)
+
+    # FD soft/hard limits are assumed to remain constant for the lifetime
+    # of the process, so they are set once at startup.
+    for gauge <- [:fd_soft_limit, :fd_hard_limit] do
+      case get_fd_limit(gauge) do
+        {:ok, value} ->
+          Gauge.set([name: gauge], value)
+
+        _ ->
+          :ok
+      end
+    end
+
     Periodic.start_link(
-      run: fn -> Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage)) end,
+      run: fn ->
+        Gauge.set([name: :memory_usage], :recon_alloc.memory(:usage))
+
+        case fd_open_count() do
+          {:ok, count} ->
+            Gauge.set([name: :fd_open_count], count)
+
+          _ ->
+            :ok
+        end
+      end,
       every: :timer.seconds(10)
     )
   end
 
   def report_shutdown() do
     Boolean.set([name: :stopping], true)
+  end
+
+  defp fd_open_count do
+    case File.ls("/proc/self/fd") do
+      {:ok, entries} -> {:ok, length(entries)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp get_fd_limit(type) do
+    flag = if type == :fd_soft_limit, do: "-Sn", else: "-Hn"
+
+    with {output, 0} <- System.cmd("sh", ["-c", "ulimit #{flag}"]),
+         {value, ""} <- output |> String.trim() |> Integer.parse() do
+      {:ok, value}
+    else
+      _ -> :error
+    end
   end
 
   defmodule ProcessesStats do
