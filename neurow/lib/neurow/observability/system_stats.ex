@@ -36,8 +36,11 @@ defmodule Neurow.Observability.SystemStats do
     # of the process, so they are set once at startup.
     for gauge <- [:fd_soft_limit, :fd_hard_limit] do
       case get_fd_limit(gauge) do
-        {:ok, value} -> Gauge.set([name: gauge], value)
-        _ -> :ok
+        {:ok, value} ->
+          Gauge.set([name: gauge], value)
+
+        _ ->
+          :ok
       end
     end
 
@@ -71,7 +74,7 @@ defmodule Neurow.Observability.SystemStats do
   defp get_fd_limit(type) do
     flag = if type == :fd_soft_limit, do: "-Sn", else: "-Hn"
 
-    with {output, 0} <- System.cmd("bash", ["-c", "ulimit #{flag}"]),
+    with {output, 0} <- System.cmd("sh", ["-c", "ulimit #{flag}"]),
          {value, ""} <- output |> String.trim() |> Integer.parse() do
       {:ok, value}
     else
