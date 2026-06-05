@@ -85,6 +85,8 @@ defmodule Neurow.Observability.HttpInterfacesStats do
     "/metrics"
   ]
 
+  def unmonitored_request_paths(), do: @unmonitored_request_paths
+
   defp monitor_path?(path) do
     !Enum.member?(@unmonitored_request_paths, path)
   end
