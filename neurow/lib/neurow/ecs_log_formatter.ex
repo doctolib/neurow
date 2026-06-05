@@ -15,12 +15,16 @@ defmodule Neurow.EcsLogFormatter do
       |> DateTime.from_unix!(:microsecond)
       |> DateTime.to_iso8601()
 
-    {module, function, arity} = metadata[:mfa]
+    log_name =
+      case metadata[:mfa] do
+        {module, function, arity} -> "#{module}.#{function}/#{arity}"
+        _ -> "unknown"
+      end
 
     %{
       "@timestamp" => event_datetime,
       "log.level" => level,
-      "log.name" => "#{module}.#{function}/#{arity}",
+      "log.name" => log_name,
       "log.source" => %{
         "file" => %{
           name: to_string(metadata[:file]),
@@ -52,7 +56,9 @@ defmodule Neurow.EcsLogFormatter do
     Map.put(payload, key, inline(value))
   end
 
-  def inline(string), do: String.replace(string, ~r/\n/, "\\n")
+  def inline({:string, iodata}), do: inline(IO.chardata_to_string(iodata))
+  def inline(message) when is_list(message), do: inline(IO.chardata_to_string(message))
+  def inline(message) when is_binary(message), do: String.replace(message, ~r/\n/, "\\n")
 
   defp newline(msg), do: msg <> "\n"
 end
