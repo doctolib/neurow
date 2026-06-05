@@ -20,8 +20,6 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
     :ok
   end
 
-
-
   defp counter_value(name, labels) do
     case Counter.value(name: name, labels: labels) do
       :undefined -> 0
@@ -66,7 +64,8 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
         nil
       )
 
-      assert counter_value(:http_request_exception_count, [:public_api, "exit"]) == before_exit + 1
+      assert counter_value(:http_request_exception_count, [:public_api, "exit"]) ==
+               before_exit + 1
     end
 
     test "does not increment for unmonitored paths" do

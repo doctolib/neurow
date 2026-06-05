@@ -59,19 +59,23 @@ defmodule Neurow.Observability.HttpInterfacesStats do
   end
 
   def handle_event([:cowboy, :request, :exception], _measurements, metadata, _config) do
-      if monitor_path?(metadata[:req][:path]) do
-        interface =
-          case metadata[:req][:ref] do
-            Neurow.PublicApi.Endpoint.HTTP -> :public_api
-            Neurow.InternalApi.Endpoint.HTTP -> :internal_api
-          end
-        Counter.inc(name: :http_request_exception_count, labels: [interface, "#{metadata[:kind]}"])
-      end
+    if monitor_path?(metadata[:req][:path]) do
+      interface =
+        case metadata[:req][:ref] do
+          Neurow.PublicApi.Endpoint.HTTP -> :public_api
+          Neurow.InternalApi.Endpoint.HTTP -> :internal_api
+        end
+
+      Counter.inc(name: :http_request_exception_count, labels: [interface, "#{metadata[:kind]}"])
     end
+  end
 
   def handle_event([:cowboy, :request, :early_error], _measurements, metadata, _config) do
     if monitor_path?(metadata[:req][:path]) do
-      Counter.inc(name: :http_request_early_error_count, labels: [trim_http_status(metadata[:resp_status])])
+      Counter.inc(
+        name: :http_request_early_error_count,
+        labels: [trim_http_status(metadata[:resp_status])]
+      )
     end
   end
 
