@@ -14,6 +14,18 @@ defmodule Neurow.Observability.HttpInterfacesStats do
       help: "HTTP request count"
     )
 
+    Counter.declare(
+      name: :http_request_exception_count,
+      labels: [:interface, :kind],
+      help: "HTTP request exception count"
+    )
+
+    Counter.declare(
+      name: :http_request_early_error_count,
+      labels: [:status],
+      help: "HTTP request early_error count"
+    )
+
     Summary.reset(name: :http_request_duration_ms, labels: [:public_api])
     Summary.reset(name: :http_request_duration_ms, labels: [:internal_api])
 
@@ -21,7 +33,9 @@ defmodule Neurow.Observability.HttpInterfacesStats do
     :telemetry.attach_many(
       "cowboy_telemetry_handler",
       [
-        [:cowboy, :request, :stop]
+        [:cowboy, :request, :stop],
+        [:cowboy, :request, :exception],
+        [:cowboy, :request, :early_error]
       ],
       &Neurow.Observability.HttpInterfacesStats.handle_event/4,
       nil
@@ -41,6 +55,23 @@ defmodule Neurow.Observability.HttpInterfacesStats do
 
       Counter.inc(name: :http_request_count, labels: [interface, trim_http_status(resp_status)])
       Summary.observe([name: :http_request_duration_ms, labels: [interface]], duration_ms)
+    end
+  end
+
+  def handle_event([:cowboy, :request, :exception], _measurements, metadata, _config) do
+      if monitor_path?(metadata[:req][:path]) do
+        interface =
+          case metadata[:req][:ref] do
+            Neurow.PublicApi.Endpoint.HTTP -> :public_api
+            Neurow.InternalApi.Endpoint.HTTP -> :internal_api
+          end
+        Counter.inc(name: :http_request_exception_count, labels: [interface, "#{metadata[:kind]}"])
+      end
+    end
+
+  def handle_event([:cowboy, :request, :early_error], _measurements, metadata, _config) do
+    if monitor_path?(metadata[:req][:path]) do
+      Counter.inc(name: :http_request_early_error_count, labels: [trim_http_status(metadata[:resp_status])])
     end
   end
 

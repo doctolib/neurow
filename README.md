@@ -10,6 +10,16 @@ This git repository contains:
 
 Both are independent Elixir mix applications.
 
+## Prerequisites
+
+The required Elixir and Erlang versions are declared in `mise.toml`. You can install them manually or via [mise](https://mise.jdx.dev/):
+
+1. [Install mise](https://mise.jdx.dev/getting-started.html)
+2. From the repo root, run:
+   ```sh
+   mise install
+   ```
+
 ## Neurow
 
 All commands provided here must be run in the `/neurow` directory
