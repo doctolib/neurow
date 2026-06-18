@@ -76,7 +76,7 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
       :telemetry.execute(
         [:cowboy, :request, :early_error],
         %{},
-        %{req: %{path: "/v1/subscribe"}, resp_status: "400 Bad Request"}
+        %{partial_req: %{path: "/v1/subscribe"}, resp_status: "400 Bad Request"}
       )
 
       assert counter_value(:http_request_early_error_count, ["400"]) == before + 1
@@ -88,10 +88,34 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
       :telemetry.execute(
         [:cowboy, :request, :early_error],
         %{},
-        %{req: %{path: "/v1/subscribe"}, resp_status: 400}
+        %{partial_req: %{path: "/v1/subscribe"}, resp_status: 400}
       )
 
       assert counter_value(:http_request_early_error_count, ["400"]) == before + 1
+    end
+
+    test "does not increment when partial_req is absent" do
+      before = counter_value(:http_request_early_error_count, ["400"])
+
+      :telemetry.execute(
+        [:cowboy, :request, :early_error],
+        %{},
+        %{resp_status: "400 Bad Request"}
+      )
+
+      assert counter_value(:http_request_early_error_count, ["400"]) == before
+    end
+
+    test "does not increment when path is nil" do
+      before = counter_value(:http_request_early_error_count, ["400"])
+
+      :telemetry.execute(
+        [:cowboy, :request, :early_error],
+        %{},
+        %{partial_req: %{path: nil}, resp_status: "400 Bad Request"}
+      )
+
+      assert counter_value(:http_request_early_error_count, ["400"]) == before
     end
 
     test "does not increment for unmonitored paths" do
@@ -101,7 +125,7 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
         :telemetry.execute(
           [:cowboy, :request, :early_error],
           %{},
-          %{req: %{path: path}, resp_status: "400 Bad Request"}
+          %{partial_req: %{path: path}, resp_status: "400 Bad Request"}
         )
 
         assert counter_value(:http_request_early_error_count, ["400"]) == before

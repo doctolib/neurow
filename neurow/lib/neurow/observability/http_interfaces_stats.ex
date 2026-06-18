@@ -71,7 +71,7 @@ defmodule Neurow.Observability.HttpInterfacesStats do
   end
 
   def handle_event([:cowboy, :request, :early_error], _measurements, metadata, _config) do
-    if monitor_path?(metadata[:req][:path]) do
+    if monitor_path?(metadata[:partial_req][:path]) do
       Counter.inc(
         name: :http_request_early_error_count,
         labels: [trim_http_status(metadata[:resp_status])]
@@ -86,6 +86,8 @@ defmodule Neurow.Observability.HttpInterfacesStats do
   ]
 
   def unmonitored_request_paths(), do: @unmonitored_request_paths
+
+  defp monitor_path?(nil), do: false
 
   defp monitor_path?(path) do
     !Enum.member?(@unmonitored_request_paths, path)
