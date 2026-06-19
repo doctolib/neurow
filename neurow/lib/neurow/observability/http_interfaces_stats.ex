@@ -22,7 +22,7 @@ defmodule Neurow.Observability.HttpInterfacesStats do
 
     Counter.declare(
       name: :http_request_early_error_count,
-      labels: [:status],
+      labels: [:interface, :status],
       help: "HTTP request early_error count"
     )
 
@@ -72,9 +72,15 @@ defmodule Neurow.Observability.HttpInterfacesStats do
 
   def handle_event([:cowboy, :request, :early_error], _measurements, metadata, _config) do
     if monitor_path?(metadata[:partial_req][:path]) do
+      interface =
+        case metadata[:ref] do
+          Neurow.PublicApi.Endpoint.HTTP -> :public_api
+          Neurow.InternalApi.Endpoint.HTTP -> :internal_api
+        end
+
       Counter.inc(
         name: :http_request_early_error_count,
-        labels: [trim_http_status(metadata[:resp_status])]
+        labels: [interface, trim_http_status(metadata[:resp_status])]
       )
     end
   end
