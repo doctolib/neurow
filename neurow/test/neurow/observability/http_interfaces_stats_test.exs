@@ -113,7 +113,9 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
       )
 
       assert counter_value(:http_request_early_error_count, [:public_api, "400"]) == before_public
-      assert counter_value(:http_request_early_error_count, [:internal_api, "400"]) == before_internal
+
+      assert counter_value(:http_request_early_error_count, [:internal_api, "400"]) ==
+               before_internal
     end
 
     test "does not increment when path is nil" do
@@ -148,6 +150,19 @@ defmodule Neurow.Observability.HttpInterfacesStatsTest do
 
         assert counter_value(:http_request_early_error_count, [:public_api, "400"]) == before
       end)
+    end
+
+    test "increments with unknown interface when ref is unknown" do
+      before = counter_value(:http_request_early_error_count, [:unknown, "400"])
+
+      assert :ok ==
+               :telemetry.execute(
+                 [:cowboy, :request, :early_error],
+                 %{},
+                 %{partial_req: %{path: "/v1/subscribe"}, resp_status: "400 Bad Request"}
+               )
+
+      assert counter_value(:http_request_early_error_count, [:unknown, "400"]) == before + 1
     end
   end
 end
