@@ -1,6 +1,7 @@
 defmodule Neurow.JwtAuthPlugTest do
   use ExUnit.Case
-  use Plug.Test
+  import Plug.Test
+  import Plug.Conn
   import JwtHelper
 
   # Can be generated with `JOSE.JWS.generate_key(%{"alg" => "HS256"}) |> JOSE.JWK.to_map |> elem(1)`
@@ -87,7 +88,7 @@ defmodule Neurow.JwtAuthPlugTest do
 
   test "do not provide details about authentication errors if verbose_authentication_errors is set to false",
        %{
-         default_opts: opts
+         default_opts: %Neurow.JwtAuthPlug.Options{} = opts
        } do
     response =
       Neurow.JwtAuthPlug.call(

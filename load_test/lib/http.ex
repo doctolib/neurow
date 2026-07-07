@@ -1,5 +1,4 @@
 defmodule Http do
-  require Logger
   import Plug.Conn
   use Plug.Router
   plug(MetricsPlugExporter)

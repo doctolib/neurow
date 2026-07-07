@@ -1,5 +1,5 @@
 defmodule JwtHelper do
-  use Plug.Test
+  import Plug.Conn
 
   def signed_jwt_token(jwt, jwk) do
     jws = %{

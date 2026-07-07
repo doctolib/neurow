@@ -1,5 +1,4 @@
 defmodule Neurow.Broker.ReceiverShardManager do
-  require Logger
   use GenServer
 
   @shards 8
