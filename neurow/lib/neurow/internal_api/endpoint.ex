@@ -1,6 +1,5 @@
 defmodule Neurow.InternalApi.Endpoint do
   require Logger
-  require Node
   import Plug.Conn
   alias Neurow.InternalApi.PublishRequest
   alias Neurow.Broker.Message
@@ -106,7 +105,7 @@ defmodule Neurow.InternalApi.Endpoint do
           length(messages) * length(topics)
 
         Enum.each(topics, fn topic ->
-          Enum.each(messages, fn message ->
+          Enum.each(messages, fn %Message{} = message ->
             :ok =
               Neurow.Broker.ReceiverShardManager.broadcast(topic, %Message{
                 message

@@ -79,7 +79,7 @@ defmodule SseHelper do
       Task.shutdown(call_task)
     end
 
-    defp instrument(conn) do
+    defp instrument(%Plug.Conn{} = conn) do
       conn_state = conn.adapter |> elem(1)
 
       %Plug.Conn{

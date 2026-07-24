@@ -67,10 +67,6 @@ defmodule Neurow.JwtAuthPlug do
           {:error, code, message} ->
             options.inc_error_callback.()
             conn |> forbidden(code, message, options)
-
-          _ ->
-            options.inc_error_callback.()
-            conn |> forbidden(:authentication_error, "Authentication error", options)
         end
 
       false ->

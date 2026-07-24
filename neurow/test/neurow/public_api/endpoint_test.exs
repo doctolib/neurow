@@ -1,6 +1,7 @@
 defmodule Neurow.PublicApi.EndpointTest do
   use ExUnit.Case
-  use Plug.Test
+  import Plug.Test
+  import Plug.Conn
   import JwtHelper
   import SseHelper
 
