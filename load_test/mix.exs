@@ -33,7 +33,7 @@ defmodule LoadTest.MixProject do
       {:plug_cowboy, "~> 2.9"},
       {:prometheus_ex, "~> 3.1"},
       {:prometheus_plugs, "~> 1.0"},
-      {:prometheus, "~> 5.0", override: true},
+      {:prometheus, "~> 6.0", override: true},
       {:parent, "~> 0.12"},
       {:uuid, "~> 1.1"},
       {:finch, "~> 0.23"},
