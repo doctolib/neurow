@@ -38,7 +38,7 @@ defmodule LoadTest.MixProject do
       {:uuid, "~> 1.1"},
       {:finch, "~> 0.23"},
       {:jose, "~> 1.11"},
-      {:jiffy, "~> 1.1"},
+      {:jiffy, "~> 2.0"},
       {:observer_cli, "~> 1.8"},
       {:gun, "~> 2.4"}
     ]
