@@ -42,7 +42,7 @@ defmodule Neurow.MixProject do
       {:parent, "~> 0.12"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 1.1"},
-      {:observer_cli, "~> 1.7"},
+      {:observer_cli, "~> 2.0"},
       {:httpoison, "~> 2.0", only: [:test]}
     ]
   end

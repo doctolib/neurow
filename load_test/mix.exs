@@ -39,7 +39,7 @@ defmodule LoadTest.MixProject do
       {:finch, "~> 0.23"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 1.1"},
-      {:observer_cli, "~> 1.8"},
+      {:observer_cli, "~> 2.0"},
       {:gun, "~> 2.4"}
     ]
   end
