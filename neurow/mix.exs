@@ -39,7 +39,7 @@ defmodule Neurow.MixProject do
       {:prometheus_ex, "~> 3.1"},
       {:prometheus_plugs, "~> 1.0"},
       {:prometheus, "~> 5.0", override: true},
-      {:parent, "~> 0.12"},
+      {:parent, "~> 0.13"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 1.1"},
       {:observer_cli, "~> 1.7"},
