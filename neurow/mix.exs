@@ -41,7 +41,7 @@ defmodule Neurow.MixProject do
       {:prometheus, "~> 5.0", override: true},
       {:parent, "~> 0.12"},
       {:jose, "~> 1.11"},
-      {:jiffy, "~> 1.1"},
+      {:jiffy, "~> 2.0"},
       {:observer_cli, "~> 1.7"},
       {:httpoison, "~> 2.0", only: [:test]}
     ]
