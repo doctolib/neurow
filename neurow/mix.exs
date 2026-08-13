@@ -35,7 +35,7 @@ defmodule Neurow.MixProject do
       {:plug_cowboy, "~> 2.9"},
       {:phoenix_pubsub, "~> 2.0"},
       {:libcluster, "~> 3.0"},
-      {:libcluster_ec2, "~> 0.5"},
+      {:libcluster_ec2, "~> 0.8"},
       {:prometheus_ex, "~> 3.1"},
       {:prometheus_plugs, "~> 1.0"},
       {:prometheus, "~> 5.0", override: true},
