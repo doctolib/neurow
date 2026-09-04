@@ -43,7 +43,7 @@ defmodule Neurow.MixProject do
       {:jose, "~> 1.11"},
       {:jiffy, "~> 2.0"},
       {:observer_cli, "~> 2.0"},
-      {:httpoison, "~> 2.0", only: [:test]}
+      {:httpoison, "~> 3.0", only: [:test]}
     ]
   end
 end
