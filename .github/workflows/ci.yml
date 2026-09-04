@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
-          otp-version: 26
-          elixir-version: 1.18
+          version-file: mise.toml
+          version-type: strict
       - run: cd neurow && mix format --check-formatted
       - run: cd neurow && mix deps.get
       - run: cd neurow && mix compile --warnings-as-errors
@@ -22,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@a6e26b22319003294c58386b6f25edbc7336819a # v1.18.0
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
-          otp-version: 26
-          elixir-version: 1.18
+          version-file: mise.toml
+          version-type: strict
       - run: cd load_test && mix format --check-formatted
       - run: cd load_test && mix deps.get
       - run: cd load_test && mix compile --warnings-as-errors
