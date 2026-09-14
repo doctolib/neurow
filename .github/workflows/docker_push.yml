@@ -20,7 +20,7 @@ jobs:
           role-session-name: docker_build_public
           aws-region: us-east-1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - run: |
           aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/doctolib
