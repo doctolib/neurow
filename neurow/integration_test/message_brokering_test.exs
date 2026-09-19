@@ -23,16 +23,10 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       # Nested loop on all public ports and internal ports to ensure that messages
       # can be forwarded from all nodes to all nodes in the cluster
       Enum.each(public_ports, fn public_port ->
-        subscribe(public_port, "test_topic", fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200},
-                         1_000,
-                         "HTTP 200 on public port #{public_port}"
+        subscribe(public_port, "test_topic", fn response ->
+          assert response.status == 200, "HTTP 200 on public port #{public_port}"
 
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers},
-                         1_000,
-                         "HTTP Headers on public port #{public_port}"
-
-          assert_headers(headers, [
+          assert_headers(response.headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
@@ -51,11 +45,12 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
               payload: "Hello from #{internal_port}"
             })
 
-            assert_receive(
-              %HTTPoison.AsyncChunk{chunk: sse_event},
-              1_000,
-              "SSE event from internal port #{internal_port} to public port #{public_port}"
-            )
+            sse_event =
+              assert_sse_chunk(
+                response,
+                1_000,
+                "SSE event from internal port #{internal_port} to public port #{public_port}"
+              )
 
             assert_sse_event(sse_event, "expected_event", "Hello from #{internal_port}")
           end)
@@ -74,22 +69,13 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
         Enum.flat_map(public_ports, fn public_port ->
           Enum.map(1..3, fn _index ->
             Task.async(fn ->
-              subscribe(public_port, "test_topic", fn ->
-                assert_receive %HTTPoison.AsyncStatus{code: 200},
-                               1_000,
-                               "HTTP 200 on public port #{public_port}"
+              subscribe(public_port, "test_topic", fn response ->
+                assert response.status == 200, "HTTP 200 on public port #{public_port}"
 
-                assert_receive %HTTPoison.AsyncHeaders{headers: headers},
-                               1_000,
-                               "HTTP Headers on public port #{public_port}"
+                sse_event =
+                  assert_sse_chunk(response, 2_000, "SSE event on public port #{public_port}")
 
-                assert_receive(
-                  %HTTPoison.AsyncChunk{chunk: sse_event},
-                  2_000,
-                  "SSE event on public port #{public_port}"
-                )
-
-                assert_headers(headers, [
+                assert_headers(response.headers, [
                   {"access-control-allow-origin", "*"},
                   {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
                   {"connection", "close"},
@@ -128,20 +114,11 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       subscribe_tasks =
         Enum.map(public_ports, fn public_port ->
           Task.async(fn ->
-            subscribe(public_port, "test_topic:#{public_port}", fn ->
-              assert_receive %HTTPoison.AsyncStatus{code: 200},
-                             1_000,
-                             "HTTP 200 on public port #{public_port}"
+            subscribe(public_port, "test_topic:#{public_port}", fn response ->
+              assert response.status == 200, "HTTP 200 on public port #{public_port}"
 
-              assert_receive %HTTPoison.AsyncHeaders{},
-                             1_000,
-                             "HTTP Headers on public port #{public_port}"
-
-              assert_receive(
-                %HTTPoison.AsyncChunk{chunk: sse_event},
-                2_000,
-                "SSE event on public port #{public_port}"
-              )
+              sse_event =
+                assert_sse_chunk(response, 2_000, "SSE event on public port #{public_port}")
 
               assert_sse_event(sse_event, "multitopic_event", "Hello !")
             end)
@@ -173,26 +150,22 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
     } do
       subscribe_task =
         Task.async(fn ->
-          subscribe(first_public_port, "test_topic", fn ->
-            assert_receive %HTTPoison.AsyncStatus{code: 200},
-                           1_000,
-                           "HTTP 200 on public port #{first_public_port}"
+          subscribe(first_public_port, "test_topic", fn response ->
+            assert response.status == 200, "HTTP 200 on public port #{first_public_port}"
 
-            assert_receive %HTTPoison.AsyncHeaders{},
-                           1_000,
-                           "HTTP Headers on public port #{first_public_port}"
+            first_sse_event =
+              assert_sse_chunk(
+                response,
+                2_000,
+                "First SSE event on public port #{first_public_port}"
+              )
 
-            assert_receive(
-              %HTTPoison.AsyncChunk{chunk: first_sse_event},
-              2_000,
-              "First SSE event on public port #{first_public_port}"
-            )
-
-            assert_receive(
-              %HTTPoison.AsyncChunk{chunk: second_sse_event},
-              2_000,
-              "Second SSE event on public port #{first_public_port}}"
-            )
+            second_sse_event =
+              assert_sse_chunk(
+                response,
+                2_000,
+                "Second SSE event on public port #{first_public_port}}"
+              )
 
             assert_sse_event(
               first_sse_event,
@@ -238,27 +211,19 @@ defmodule Neurow.IntegrationTest.MessageBrokeringTest do
       subscribe_tasks =
         Enum.map(public_ports, fn public_port ->
           Task.async(fn ->
-            subscribe(public_port, "test_topic:#{public_port}", fn ->
-              assert_receive %HTTPoison.AsyncStatus{code: 200},
-                             1_000,
-                             "HTTP 200 on public port #{public_port}"
-
-              assert_receive %HTTPoison.AsyncHeaders{},
-                             1_000,
-                             "HTTP Headers on public port #{public_port}"
+            subscribe(public_port, "test_topic:#{public_port}", fn response ->
+              assert response.status == 200, "HTTP 200 on public port #{public_port}"
 
               # Expect to receive a message published on each node
-              assert_receive(
-                %HTTPoison.AsyncChunk{chunk: first_sse_event},
-                2_000,
-                "First SSE event on public port #{public_port}"
-              )
+              first_sse_event =
+                assert_sse_chunk(response, 2_000, "First SSE event on public port #{public_port}")
 
-              assert_receive(
-                %HTTPoison.AsyncChunk{chunk: second_sse_event},
-                2_000,
-                "Second SSE event on public port #{public_port}}"
-              )
+              second_sse_event =
+                assert_sse_chunk(
+                  response,
+                  2_000,
+                  "Second SSE event on public port #{public_port}}"
+                )
 
               assert_sse_event(
                 first_sse_event,
