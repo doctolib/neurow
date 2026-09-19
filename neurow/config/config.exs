@@ -2,6 +2,9 @@
 
 import Config
 
+# Used by libcluster_ec2 to call the EC2 API; avoids depending on hackney
+config :ex_aws, http_client: ExAws.Request.Req
+
 case Mix.env() do
   :prod ->
     config :logger,

@@ -43,7 +43,7 @@ defmodule Neurow.MixProject do
       {:jose, "~> 1.11"},
       {:jiffy, "~> 2.0"},
       {:observer_cli, "~> 2.0"},
-      {:req, "~> 0.7", only: [:test]}
+      {:req, "~> 0.7"}
     ]
   end
 end
