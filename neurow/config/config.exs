@@ -2,7 +2,7 @@
 
 import Config
 
-# Used by libcluster_ec2 to call the EC2 API; avoids depending on hackney
+# Used by libcluster_ec2 to call the EC2 API
 config :ex_aws, http_client: ExAws.Request.Req
 
 case Mix.env() do
