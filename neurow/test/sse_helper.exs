@@ -109,11 +109,10 @@ defmodule SseHelper do
     def subscribe_url(port), do: "http://localhost:#{port}/v1/subscribe"
 
     @doc """
-    Required in test setups before using HTTPoison
+    Required in test setups before using Req
     """
     def ensure_started do
-      Application.ensure_all_started(:httpoison)
-      HTTPoison.start()
+      Application.ensure_all_started(:req)
     end
 
     def subscribe(port, topic, assert_fn, extra_headers \\ []) do
@@ -121,17 +120,34 @@ defmodule SseHelper do
         [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api(topic)}"] ++
           extra_headers
 
-      async_response = HTTPoison.post!(subscribe_url(port), "", headers, stream_to: self())
-      assert_fn.()
-      :hackney.stop_async(async_response.id)
+      response = Req.post!(subscribe_url(port), headers: headers, body: "", into: :self)
+      assert_fn.(response)
+      Req.cancel_async_response(response)
     end
 
     def assert_headers(headers, expected_headers) do
       expected_headers
-      |> Enum.each(fn expected_header ->
-        assert headers |> Enum.member?(expected_header),
-               "Expecting header #{inspect(expected_header)}"
+      |> Enum.each(fn {name, value} ->
+        assert value in (headers[name] || []),
+               "Expecting header #{inspect({name, value})}, got #{inspect(headers[name])}"
       end)
+    end
+
+    @doc """
+    Waits for the next SSE body chunk received on an async Req response (`into: :self`)
+    """
+    def assert_sse_chunk(response, timeout \\ 100, failure_message \\ nil) do
+      assert_receive message, timeout, failure_message
+      assert {:ok, [data: chunk]} = Req.parse_message(response, message)
+      chunk
+    end
+
+    @doc """
+    Asserts that an async Req response (`into: :self`) has finished streaming
+    """
+    def assert_sse_end(response, timeout \\ 100, failure_message \\ nil) do
+      assert_receive message, timeout, failure_message
+      assert {:ok, [:done]} = Req.parse_message(response, message)
     end
 
     def publish(port, topics, messages) do
@@ -166,20 +182,15 @@ defmodule SseHelper do
 
       payload_str = :jiffy.encode(payload)
 
-      %HTTPoison.Response{status_code: status, body: body} =
-        HTTPoison.post!(publish_url(port), payload_str, headers)
+      response =
+        Req.post!(publish_url(port), headers: headers, body: payload_str, decode_body: false)
 
-      assert status == 200, "Cannot publish message(s): #{status}, #{inspect(body)}"
+      assert response.status == 200,
+             "Cannot publish message(s): #{response.status}, #{inspect(response.body)}"
     end
 
     def assert_no_more_chunk do
-      assert_raise(
-        ExUnit.AssertionError,
-        ~r/The process mailbox is empty./,
-        fn ->
-          assert_receive(%HTTPoison.AsyncChunk{chunk: _chunk})
-        end
-      )
+      refute_receive(_message)
     end
   end
 end
