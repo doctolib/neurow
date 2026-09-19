@@ -38,7 +38,7 @@ defmodule Neurow.MixProject do
       {:libcluster_ec2, "~> 0.8"},
       {:prometheus_ex, "~> 3.1"},
       {:prometheus_plugs, "~> 1.0"},
-      {:prometheus, "~> 5.0", override: true},
+      {:prometheus, "~> 6.0", override: true},
       {:parent, "~> 0.13"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 2.0"},
