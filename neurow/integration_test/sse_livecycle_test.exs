@@ -20,11 +20,10 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(first_public_port, "test_topic", fn ->
-        assert_receive %HTTPoison.AsyncStatus{code: 200}
-        assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+      subscribe(first_public_port, "test_topic", fn response ->
+        assert response.status == 200
 
-        assert_headers(headers, [
+        assert_headers(response.headers, [
           {"access-control-allow-origin", "*"},
           {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
           {"connection", "close"},
@@ -32,11 +31,11 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
           {"transfer-encoding", "chunked"}
         ])
 
-        assert_receive %HTTPoison.AsyncChunk{chunk: timeout_sse_event}, 4_200
+        timeout_sse_event = assert_sse_chunk(response, 4_200)
 
         assert "timeout" == parse_sse_event(timeout_sse_event).event
 
-        assert_receive %HTTPoison.AsyncEnd{}
+        assert_sse_end(response)
       end)
     end
   end
@@ -52,12 +51,11 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
       subscribe(
         first_public_port,
         "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+        fn response ->
+          assert response.status == 200
 
           assert_headers(
-            headers,
+            response.headers,
             [
               {"access-control-allow-origin", "*"},
               {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
@@ -68,7 +66,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
             ]
           )
 
-          assert_receive %HTTPoison.AsyncChunk{chunk: ping_sse_event}, 1_500
+          ping_sse_event = assert_sse_chunk(response, 1_500)
           assert "ping" == parse_sse_event(ping_sse_event).event
         end
       )
@@ -92,15 +90,14 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
            public_api_port: public_api_port
          } do
       Task.async(fn ->
-        subscribe(public_api_port, "test_topic", fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
-          assert_receive %HTTPoison.AsyncHeaders{}
+        subscribe(public_api_port, "test_topic", fn response ->
+          assert response.status == 200
 
-          assert_receive %HTTPoison.AsyncChunk{chunk: shutdown_sse_event}, 5_000
+          shutdown_sse_event = assert_sse_chunk(response, 5_000)
 
           assert "reconnect" == parse_sse_event(shutdown_sse_event).event
 
-          assert_receive %HTTPoison.AsyncEnd{}
+          assert_sse_end(response)
         end)
       end)
 
@@ -119,9 +116,8 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
       subscribe(
         first_public_port,
         "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
-          assert_receive %HTTPoison.AsyncHeaders{}
+        fn response ->
+          assert response.status == 200
         end,
         cookie: fake_cookie
       )
@@ -136,12 +132,11 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
     headers =
       [Authorization: "Bearer #{compute_jwt_token_in_req_header_public_api("test_topic")}"]
 
-    async_response = HTTPoison.get!(subscribe_url(first_public_port), headers, stream_to: self())
+    response = Req.get!(subscribe_url(first_public_port), headers: headers, into: :self)
 
-    assert_receive %HTTPoison.AsyncStatus{code: 200}
-    assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+    assert response.status == 200
 
-    assert_headers(headers, [
+    assert_headers(response.headers, [
       {"access-control-allow-origin", "*"},
       {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
       {"connection", "close"},
@@ -149,7 +144,7 @@ defmodule Neurow.IntegrationTest.SseLifecycleTest do
       {"transfer-encoding", "chunked"}
     ])
 
-    :hackney.stop_async(async_response.id)
+    Req.cancel_async_response(response)
   end
 
   def override_timeout(timeout) do

@@ -40,11 +40,10 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         public_api_ports: [first_public_port | _other_ports]
       }
     } do
-      subscribe(first_public_port, "test_topic", fn ->
-        assert_receive %HTTPoison.AsyncStatus{code: 200}
-        assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+      subscribe(first_public_port, "test_topic", fn response ->
+        assert response.status == 200
 
-        assert_headers(headers, [
+        assert_headers(response.headers, [
           {"access-control-allow-origin", "*"},
           {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
           {"connection", "close"},
@@ -64,18 +63,17 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       subscribe(
         first_public_port,
         "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 400}
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
+        fn response ->
+          assert response.status == 400
 
-          assert_headers(headers, [
+          assert_headers(response.headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
             {"content-type", "text/event-stream"}
           ])
 
-          assert_receive %HTTPoison.AsyncChunk{chunk: body}
+          body = assert_sse_chunk(response)
 
           json_event = parse_sse_json_event(body)
 
@@ -91,7 +89,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
                      ]
                    }
 
-          assert_receive %HTTPoison.AsyncEnd{}
+          assert_sse_end(response)
         end,
         "last-event-id": "foo"
       )
@@ -105,12 +103,10 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       subscribe(
         first_public_port,
         "empty_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
+        fn response ->
+          assert response.status == 200
 
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
-
-          assert_headers(headers, [
+          assert_headers(response.headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
@@ -132,12 +128,10 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       subscribe(
         first_public_port,
         "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
+        fn response ->
+          assert response.status == 200
 
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
-
-          assert_headers(headers, [
+          assert_headers(response.headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
@@ -146,7 +140,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
           ])
 
           Enum.each(1..5, fn index ->
-            assert_receive(%HTTPoison.AsyncChunk{chunk: sse_event})
+            sse_event = assert_sse_chunk(response)
             assert_sse_event(sse_event, "test_event", "Message #{index}", "#{index}")
           end)
 
@@ -164,12 +158,10 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
       subscribe(
         first_public_port,
         "test_topic",
-        fn ->
-          assert_receive %HTTPoison.AsyncStatus{code: 200}
+        fn response ->
+          assert response.status == 200
 
-          assert_receive %HTTPoison.AsyncHeaders{headers: headers}
-
-          assert_headers(headers, [
+          assert_headers(response.headers, [
             {"access-control-allow-origin", "*"},
             {"cache-control", "no-cache, no-store, max-age=0, must-revalidate"},
             {"connection", "close"},
@@ -178,7 +170,7 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
           ])
 
           Enum.each(3..5, fn index ->
-            assert_receive(%HTTPoison.AsyncChunk{chunk: sse_event})
+            sse_event = assert_sse_chunk(response)
             assert_sse_event(sse_event, "test_event", "Message #{index}", "#{index}")
           end)
 
@@ -220,17 +212,18 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
       # Then iterate on each node to fetch the history on the internal API
       Enum.each(internal_ports, fn internal_port ->
-        %HTTPoison.Response{body: body, headers: response_headers} =
-          HTTPoison.get!(
+        response =
+          Req.get!(
             "http://localhost:#{first_internal_port}/history/test_issuer1-test_topic",
-            request_headers
+            headers: request_headers,
+            decode_body: false
           )
 
-        assert_headers(response_headers, [
+        assert_headers(response.headers, [
           {"content-type", "application/json"}
         ])
 
-        returned_history = :jiffy.decode(body, [:return_maps])
+        returned_history = :jiffy.decode(response.body, [:return_maps])
 
         assert returned_history == expected_history, "History on internal port #{internal_port}"
       end)
@@ -291,17 +284,18 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
 
       # Fetch the history from each node and assert its content
       Enum.each(internal_ports, fn internal_port ->
-        %HTTPoison.Response{body: body, headers: response_headers} =
-          HTTPoison.get!(
+        response =
+          Req.get!(
             "http://localhost:#{internal_port}/history/test_issuer1-test_topic",
-            request_headers
+            headers: request_headers,
+            decode_body: false
           )
 
-        assert_headers(response_headers, [
+        assert_headers(response.headers, [
           {"content-type", "application/json"}
         ])
 
-        returned_history = :jiffy.decode(body, [:return_maps])
+        returned_history = :jiffy.decode(response.body, [:return_maps])
 
         history_payloads =
           returned_history
@@ -321,14 +315,12 @@ defmodule Neurow.IntegrationTest.MessageHistoryTest do
         subscribe(
           public_ports,
           "test_topic",
-          fn ->
-            assert_receive %HTTPoison.AsyncStatus{code: 200}
-
-            assert_receive %HTTPoison.AsyncHeaders{}
+          fn response ->
+            assert response.status == 200
 
             history_payloads =
               Enum.map(1..3, fn _index ->
-                assert_receive %HTTPoison.AsyncChunk{chunk: sse_event}
+                sse_event = assert_sse_chunk(response)
                 parse_sse_event(sse_event).data
               end)
               |> Enum.sort()
