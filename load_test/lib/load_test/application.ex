@@ -24,7 +24,6 @@ defmodule LoadTest.Application do
        }}
     ]
 
-    MetricsPlugExporter.setup()
     Stats.setup()
 
     opts = [strategy: :one_for_one, name: LoadTest.Supervisor]
