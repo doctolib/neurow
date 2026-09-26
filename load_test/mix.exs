@@ -31,9 +31,8 @@ defmodule LoadTest.MixProject do
   defp deps do
     [
       {:plug_cowboy, "~> 2.9"},
-      {:prometheus_ex, "~> 3.1"},
-      {:prometheus_plugs, "~> 1.0"},
-      {:prometheus, "~> 5.0", override: true},
+      {:prometheus_ex, "~> 4.0"},
+      {:prometheus, "~> 5.0"},
       {:parent, "~> 0.13"},
       {:uuid, "~> 1.1"},
       {:finch, "~> 0.23"},

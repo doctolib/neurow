@@ -13,6 +13,14 @@ defmodule Neurow.InternalApi.EndpointTest do
     assert call.status == 200
   end
 
+  test "GET /metrics serves the Prometheus text format without authentication" do
+    conn = conn(:get, "/metrics")
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
+    assert call.status == 200
+    assert get_resp_header(call, "content-type") == [:prometheus_text_format.content_type()]
+    assert IO.iodata_to_binary(call.resp_body) =~ "# TYPE"
+  end
+
   test "GET /nodes is available without authentication" do
     conn = conn(:get, "/nodes")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
