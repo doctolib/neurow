@@ -2,5 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>doctolib/renovate-config"
-  ]
+  ],
+  "constraints": {
+    "erlang": ">=29"
+  }
 }
