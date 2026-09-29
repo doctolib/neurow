@@ -4,7 +4,6 @@ defmodule Neurow.Observability do
   def setup() do
     Neurow.Observability.MessageBrokerStats.setup()
     Neurow.Observability.HttpInterfacesStats.setup()
-    Neurow.Observability.MetricsPlugExporter.setup()
     Neurow.Observability.SecurityStats.setup()
     Neurow.Observability.SystemStats.setup()
   end

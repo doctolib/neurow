@@ -5,7 +5,6 @@ defmodule Neurow.InternalApi.Endpoint do
   alias Neurow.Broker.Message
 
   use Plug.Router
-  plug(Neurow.Observability.MetricsPlugExporter)
 
   plug(Neurow.JwtAuthPlug,
     credential_headers: ["x-interservice-authorization", "authorization"],
@@ -18,6 +17,7 @@ defmodule Neurow.InternalApi.Endpoint do
     send_unauthorized: &Neurow.InternalApi.Endpoint.send_unauthorized/3,
     inc_error_callback: &Neurow.Observability.SecurityStats.inc_jwt_errors_internal/0,
     exclude_path_prefixes: [
+      "/metrics",
       "/ping",
       "/nodes",
       "/cluster_size_above",
@@ -49,6 +49,12 @@ defmodule Neurow.InternalApi.Endpoint do
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(200, Jason.encode!(%{status: :ok, revision: @revision}))
+  end
+
+  get "/metrics" do
+    conn
+    |> put_resp_content_type(:prometheus_text_format.content_type(), nil)
+    |> send_resp(200, :prometheus_text_format.format())
   end
 
   get "/nodes" do
