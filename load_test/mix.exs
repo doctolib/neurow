@@ -35,7 +35,7 @@ defmodule LoadTest.MixProject do
       {:prometheus, "~> 5.0"},
       {:parent, "~> 0.13"},
       {:uuid, "~> 1.1"},
-      {:finch, "~> 0.23"},
+      {:finch, "~> 0.24"},
       {:jose, "~> 1.11"},
       {:jiffy, "~> 2.0"},
       {:observer_cli, "~> 2.0"},
