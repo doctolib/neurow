@@ -21,6 +21,26 @@ defmodule Neurow.InternalApi.EndpointTest do
     assert IO.iodata_to_binary(call.resp_body) =~ "# TYPE"
   end
 
+  test "GET /metrics exposes the Erlang VM metrics under their prometheus 6 names" do
+    conn = conn(:get, "/metrics")
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
+    body = IO.iodata_to_binary(call.resp_body)
+
+    for name <- ~w(
+          erlang_vm_memory_atom_bytes
+          erlang_vm_memory_bytes
+          erlang_vm_memory_processes_bytes
+          erlang_vm_memory_system_bytes
+          erlang_vm_processes
+        ) do
+      assert body =~ "# TYPE #{name} ", "missing metric #{name}"
+    end
+
+    # prometheus 6 renamed erlang_vm_process_count to erlang_vm_processes.
+    # The old name would only come back if the `collectors_compat` option were enabled.
+    refute body =~ "erlang_vm_process_count"
+  end
+
   test "GET /nodes is available without authentication" do
     conn = conn(:get, "/nodes")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
