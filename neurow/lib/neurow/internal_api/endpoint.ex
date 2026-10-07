@@ -52,9 +52,11 @@ defmodule Neurow.InternalApi.Endpoint do
   end
 
   get "/metrics" do
+    format = metrics_format(conn)
+
     conn
-    |> put_resp_content_type(:prometheus_text_format.content_type(), nil)
-    |> send_resp(200, :prometheus_text_format.format())
+    |> put_resp_content_type(format.content_type(), nil)
+    |> send_resp(200, format.format())
   end
 
   get "/nodes" do
@@ -186,5 +188,26 @@ defmodule Neurow.InternalApi.Endpoint do
     conn
     |> put_resp_header("content-type", "application/json")
     |> resp(status, response)
+  end
+
+  # Some scrapers request the protobuf format and their text parsers drop
+  # summaries, which expose no quantile samples in the text format.
+  defp metrics_format(conn) do
+    case get_req_header(conn, "accept") do
+      [accept | _] -> negotiate_metrics_format(accept)
+      [] -> :prometheus_text_format
+    end
+  end
+
+  defp negotiate_metrics_format(accept) do
+    case :accept_header.negotiate(accept, [
+           {:prometheus_text_format.content_type(), :prometheus_text_format},
+           {:prometheus_protobuf_format.content_type(), :prometheus_protobuf_format}
+         ]) do
+      :undefined -> :prometheus_text_format
+      format -> format
+    end
+  rescue
+    _ -> :prometheus_text_format
   end
 end

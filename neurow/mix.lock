@@ -1,4 +1,5 @@
 %{
+  "accept": {:hex, :accept, "0.3.7", "cd6e34a2d7e28ca38b2d3cb233734ca0c221efbc1f171f91fec5f162cc2d18da", [:rebar3], [], "hexpm", "ca69388943f5dad2e7232a5478f16086e3c872f48e32b88b378e1885a59f5649"},
   "cowboy": {:hex, :cowboy, "2.17.0", "059d6ae769214cedf55d115ce5bf38649ff6b32ec693067cf6b185d0ab1b53c3", [:make, :rebar3], [{:cowlib, ">= 2.18.0 and < 3.0.0", [hex: :cowlib, repo: "hexpm", optional: false]}, {:ranch, ">= 1.8.0 and < 3.0.0", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm", "84f0e4c9d5820342cd506472052b79336d0d9d3624e46303f6d0af9dc94e8d5f"},
   "cowboy_telemetry": {:hex, :cowboy_telemetry, "0.4.0", "f239f68b588efa7707abce16a84d0d2acf3a0f50571f8bb7f56a15865aae820c", [:rebar3], [{:cowboy, "~> 2.7", [hex: :cowboy, repo: "hexpm", optional: false]}, {:telemetry, "~> 1.0", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "7d98bac1ee4565d31b62d59f8823dfd8356a169e7fcbb83831b8a5397404c9de"},
   "cowlib": {:hex, :cowlib, "2.18.0", "4a3ef8cb012c21c7cbb7c925f75405e26d7fcd393fd78c46187539dbc9a48310", [:make, :rebar3], [], "hexpm", "c4f89d33a61162d4cfdcb5a1af7e562d80a700b2573cc71020ce6521b152dc1a"},
