@@ -41,6 +41,44 @@ defmodule Neurow.InternalApi.EndpointTest do
     refute body =~ "erlang_vm_process_count"
   end
 
+  test "GET /metrics serves the protobuf format when the client accepts it" do
+    conn =
+      conn(:get, "/metrics")
+      |> put_req_header(
+        "accept",
+        "application/vnd.google.protobuf; proto=io.prometheus.client.MetricFamily; encoding=delimited"
+      )
+
+    call = Neurow.InternalApi.Endpoint.call(conn, [])
+    assert call.status == 200
+    assert get_resp_header(call, "content-type") == [:prometheus_protobuf_format.content_type()]
+
+    body = IO.iodata_to_binary(call.resp_body)
+    refute body =~ "# TYPE"
+    assert body =~ "http_request_duration_ms"
+  end
+
+  test "GET /metrics serves the text format for any other accept header" do
+    for accept <- [
+          "text/plain",
+          "*/*",
+          "application/vnd.google.protobuf;q=0, text/plain",
+          "not a media type"
+        ] do
+      conn =
+        conn(:get, "/metrics")
+        |> put_req_header("accept", accept)
+
+      call = Neurow.InternalApi.Endpoint.call(conn, [])
+      assert call.status == 200
+
+      assert get_resp_header(call, "content-type") == [:prometheus_text_format.content_type()],
+             "expected the text format for accept: #{accept}"
+
+      assert IO.iodata_to_binary(call.resp_body) =~ "# TYPE"
+    end
+  end
+
   test "GET /nodes is available without authentication" do
     conn = conn(:get, "/nodes")
     call = Neurow.InternalApi.Endpoint.call(conn, [])
