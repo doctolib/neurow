@@ -5,5 +5,12 @@
   ],
   "constraints": {
     "erlang": ">=29"
-  }
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["terraform"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "addLabels": ["auto-merge"]
+    }
+  ]
 }
