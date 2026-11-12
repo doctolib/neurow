@@ -27,6 +27,7 @@ RUN mix release
 FROM ${BUILDER_IMAGE}:${VERSION}
 
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends curl dnsutils \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
