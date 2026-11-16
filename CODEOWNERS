@@ -1,4 +1,4 @@
-* @bpaquet @achouippe@papey @doctolib/ntc
+* @bpaquet @achouippe @papey @doctolib/ntc
 
 # No code owner: terraform lock file updates only need the mergebot approval
 load_test/terraform/.terraform.lock.hcl
