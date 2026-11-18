@@ -3,6 +3,6 @@
 # No code owner: terraform lock file updates only need the mergebot approval
 load_test/terraform/.terraform.lock.hcl
 
-# docto-mergebot (via @doctolib/deployment) approves minor and patch Renovate and Dependabot updates of these files; majors need a person
+# docto-mergebot (via @doctolib/deployment): co-owning the files below lets its approval of Renovate and Dependabot PRs count as code owner review; it merges minor and patch updates only, a person merges majors (CODEOWNERS itself cannot tell them apart)
 /load_test/Dockerfile @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
 /neurow/Dockerfile @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
