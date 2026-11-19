@@ -6,3 +6,6 @@ load_test/terraform/.terraform.lock.hcl
 # docto-mergebot (via @doctolib/deployment): co-owning the files below lets its approval of Renovate and Dependabot PRs count as code owner review; it merges minor and patch updates only, a person merges majors (CODEOWNERS itself cannot tell them apart)
 /load_test/Dockerfile @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
 /neurow/Dockerfile @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
+/neurow/mix.lock @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
+/load_test/mix.lock @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
+/load_test/mix.exs @bpaquet @achouippe @papey @doctolib/ntc @doctolib/deployment
